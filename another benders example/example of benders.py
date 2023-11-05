@@ -1,4 +1,5 @@
 """
+reference: Taşkin, Zeki Caner. "Benders decomposition." Wiley Encyclopedia of Operations Research and Management Science (2010).
 min 7 * y1 + 7 * y2 + 7 * y3 + 7 * y4 + 7 * y5 + x1 + x2 + x3 + x4 + x5
 s.t. x1 + x4 + x5 = 8
     x2 + x5 = 3
