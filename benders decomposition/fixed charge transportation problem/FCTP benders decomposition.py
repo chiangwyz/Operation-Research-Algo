@@ -47,7 +47,7 @@ class BendersCallback(cp.CallbackBase):
             print("Iteration: {0} (best objective: {1})".format(self._iter, self.getInfo(COPT.CBInfo.BestObj)))
 
             if self._iter >= 1:
-                tmp_y_value = []
+                print("Iteration: {}".format(self._iter))
                 for i in range(self._nsuppliers):
                     for j in range(self._ndemanders):
                         print("y_{}_{} = {}".format(i, j, self.getSolution(self._m_var_y[i][j])))
@@ -70,28 +70,63 @@ class BendersCallback(cp.CallbackBase):
                 #     for j in range(self._ndemanders):
                 #         print("dualfarkas = {}, bigM = {}".format(self._s_constr_link[i][j].dualfarkas, self._bigM[i][j]))
 
+                feasibility_cut = str()
+                coeff = sum(-self._s_constr_supply[i].dualfarkas * self._supply[i] for i in range(self._nsuppliers)) + \
+                        sum(self._s_constr_demand[i].dualfarkas * self._demand[i] for i in range(self._ndemanders))
+
+                print("coeff =", coeff)
+                feasibility_cut += str(coeff)
+                for i in range(self._nsuppliers):
+                    for j in range(self._ndemanders):
+                        if self._s_constr_link[i][j].dualfarkas != 0:
+                            term = - self._s_constr_link[i][j].dualfarkas * self._bigM[i][j]
+                            if term > 0:
+                                # Append the term to the feasibility cut string
+                                feasibility_cut += " +" + str(term) + "*y_" + str(i+1) + "_" + str(j+1)
+                            else:
+                                feasibility_cut += " " + str(term) + "*y_" + str(i+1) + "_" + str(j+1)
+                feasibility_cut += str(" <= 0")
+
                 lazyconstr = sum(-self._s_constr_supply[i].dualfarkas * self._supply[i] for i in range(self._nsuppliers)) + \
                              sum(self._s_constr_demand[i].dualfarkas * self._demand[i] for i in range(self._ndemanders)) + \
                              cp.quicksum(-self._s_constr_link[i][j].dualfarkas * self._bigM[i][j] * self._m_var_y[i][j] for i in range(self._nsuppliers) \
                                          for j in range(self._ndemanders))
                 self.addLazyConstr(lazyconstr <= 0)
-                print("feasibility cut = {}".format(lazyconstr))
+                print("feasibility cut = {}".format(feasibility_cut))
 
                 self._iter += 1
             elif self._subprob.status == COPT.OPTIMAL:
                 tmp_sum_y = sum(self._fixcost[i][j] * self.getSolution(self._m_var_y[i][j]) for i in range(self._nsuppliers) for j in range(self._ndemanders))
-                print("subprob.objval =: {}".format(self._subprob.objval))
+                print("UB =: {}".format(self._subprob.objval))
                 print("tmp_sum_y =: {}".format(tmp_sum_y))
-                print("var q =: {}".format(self.getSolution(self._m_var_q)))
+                print("LB =: {}".format(self.getSolution(self._m_var_q)))
                 if self._subprob.objval > self.getSolution(self._m_var_q) + 1e-6:
                     print("Adding optimality cut...")
+
+                    optimality_cut = str()
+                    coeff = sum(-self._s_constr_supply[i].pi * self._supply[i] for i in range(self._nsuppliers)) + \
+                            sum(self._s_constr_demand[i].pi * self._demand[i] for i in range(self._ndemanders))
+
+                    print("coeff = ", coeff)
+                    optimality_cut += str(coeff)
+                    for i in range(self._nsuppliers):
+                        for j in range(self._ndemanders):
+                            if self._s_constr_link[i][j].pi != 0:
+                                term = - self._s_constr_link[i][j].pi * self._bigM[i][j]
+                                if term > 0:
+                                    # Append the term to the feasibility cut string
+                                    optimality_cut += " +" + str(term) + "*y_" + str(i+1) + "_" + str(j+1)
+                                else:
+                                    optimality_cut += " " + str(term) + "*y_" + str(i+1) + "_" + str(j+1)
+                    optimality_cut += str(" <= q")
+                    print("optimality cut = {}".format(optimality_cut))
+
                     lazyconstr = sum(-self._s_constr_supply[i].pi * self._supply[i] for i in range(self._nsuppliers)) + \
                                  sum(self._s_constr_demand[i].pi * self._demand[i] for i in range(self._ndemanders)) + \
                                  cp.quicksum( -self._s_constr_link[i][j].pi * self._bigM[i][j] * self._m_var_y[i][j] for i in
                                      range(self._nsuppliers) \
                                      for j in range(self._ndemanders))
                     self.addLazyConstr(self._m_var_q >= lazyconstr)
-                    print("optimality cut = {}".format(lazyconstr))
 
                 self._iter += 1
             else:
