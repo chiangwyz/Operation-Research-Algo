@@ -12,6 +12,7 @@ author: JIANG DAPEI
 
 import sys
 import coptpy as cp
+import numpy as np
 from coptpy import COPT
 
 
@@ -19,7 +20,8 @@ from coptpy import COPT
 
 # Customized Benders callback
 class BendersCallback(cp.CallbackBase):
-    def __init__(self, nsuppliers, ndemanders, supply, demand, fixcost, m_var_q, m_var_y, subprob, bigM, s_var_x, s_constr_demand, s_constr_supply, s_constr_link):
+    def __init__(self, nsuppliers, ndemanders, supply, demand, fixcost, m_var_q, m_var_y, subprob, bigM, \
+                 s_var_x, s_constr_demand, s_constr_supply, s_constr_link, global_UB, global_LB):
         super().__init__()
 
 
@@ -42,6 +44,10 @@ class BendersCallback(cp.CallbackBase):
         self._s_constr_supply = s_constr_supply
         self._s_constr_link = s_constr_link
 
+        # Initialize global UB and global LB
+        self.global_UB = global_UB
+        self.global_LB = global_LB
+
     def callback(self):
         if self.where() == COPT.CBCONTEXT_MIPSOL:
             print("Iteration: {0} (best objective: {1})".format(self._iter, self.getInfo(COPT.CBInfo.BestObj)))
@@ -50,7 +56,7 @@ class BendersCallback(cp.CallbackBase):
                 print("Iteration: {}".format(self._iter))
                 for i in range(self._nsuppliers):
                     for j in range(self._ndemanders):
-                        print("y_{}_{} = {}".format(i, j, self.getSolution(self._m_var_y[i][j])))
+                        print("y_{}_{} = {}".format(i+1, j+1, self.getSolution(self._m_var_y[i][j])))
                         self._s_constr_link[i][j].lb = - self._bigM[i][j] * self.getSolution(self._m_var_y[i][j])
 
             print("Solving subproblem...")
@@ -82,21 +88,30 @@ class BendersCallback(cp.CallbackBase):
                             term = - self._s_constr_link[i][j].dualfarkas * self._bigM[i][j]
                             if term > 0:
                                 # Append the term to the feasibility cut string
-                                feasibility_cut += " +" + str(term) + "*y_" + str(i+1) + "_" + str(j+1)
+                                feasibility_cut += " +" + str(term) + "*y_" + str(i + 1) + "_" + str(j + 1)
                             else:
-                                feasibility_cut += " " + str(term) + "*y_" + str(i+1) + "_" + str(j+1)
+                                feasibility_cut += " " + str(term) + "*y_" + str(i + 1) + "_" + str(j + 1)
                 feasibility_cut += str(" <= 0")
 
-                lazyconstr = sum(-self._s_constr_supply[i].dualfarkas * self._supply[i] for i in range(self._nsuppliers)) + \
-                             sum(self._s_constr_demand[i].dualfarkas * self._demand[i] for i in range(self._ndemanders)) + \
-                             cp.quicksum(-self._s_constr_link[i][j].dualfarkas * self._bigM[i][j] * self._m_var_y[i][j] for i in range(self._nsuppliers) \
-                                         for j in range(self._ndemanders))
+                lazyconstr = sum(
+                    -self._s_constr_supply[i].dualfarkas * self._supply[i] for i in range(self._nsuppliers)) + \
+                             sum(self._s_constr_demand[i].dualfarkas * self._demand[i] for i in
+                                 range(self._ndemanders)) + \
+                             cp.quicksum(
+                                 -self._s_constr_link[i][j].dualfarkas * self._bigM[i][j] * self._m_var_y[i][j] for i in
+                                 range(self._nsuppliers) \
+                                 for j in range(self._ndemanders))
                 self.addLazyConstr(lazyconstr <= 0)
                 print("feasibility cut = {}".format(feasibility_cut))
 
                 self._iter += 1
             elif self._subprob.status == COPT.OPTIMAL:
-                tmp_sum_y = sum(self._fixcost[i][j] * self.getSolution(self._m_var_y[i][j]) for i in range(self._nsuppliers) for j in range(self._ndemanders))
+                # 添加上界
+                self.global_UB.append(self._subprob.objval)
+
+                tmp_sum_y = sum(
+                    self._fixcost[i][j] * self.getSolution(self._m_var_y[i][j]) for i in range(self._nsuppliers) for j
+                    in range(self._ndemanders))
                 print("UB =: {}".format(self._subprob.objval))
                 print("tmp_sum_y =: {}".format(tmp_sum_y))
                 print("LB =: {}".format(self.getSolution(self._m_var_q)))
@@ -115,15 +130,16 @@ class BendersCallback(cp.CallbackBase):
                                 term = - self._s_constr_link[i][j].pi * self._bigM[i][j]
                                 if term > 0:
                                     # Append the term to the feasibility cut string
-                                    optimality_cut += " +" + str(term) + "*y_" + str(i+1) + "_" + str(j+1)
+                                    optimality_cut += " +" + str(term) + "*y_" + str(i + 1) + "_" + str(j + 1)
                                 else:
-                                    optimality_cut += " " + str(term) + "*y_" + str(i+1) + "_" + str(j+1)
+                                    optimality_cut += " " + str(term) + "*y_" + str(i + 1) + "_" + str(j + 1)
                     optimality_cut += str(" <= q")
                     print("optimality cut = {}".format(optimality_cut))
 
                     lazyconstr = sum(-self._s_constr_supply[i].pi * self._supply[i] for i in range(self._nsuppliers)) + \
                                  sum(self._s_constr_demand[i].pi * self._demand[i] for i in range(self._ndemanders)) + \
-                                 cp.quicksum( -self._s_constr_link[i][j].pi * self._bigM[i][j] * self._m_var_y[i][j] for i in
+                                 cp.quicksum(
+                                     -self._s_constr_link[i][j].pi * self._bigM[i][j] * self._m_var_y[i][j] for i in
                                      range(self._nsuppliers) \
                                      for j in range(self._ndemanders))
                     self.addLazyConstr(self._m_var_q >= lazyconstr)
@@ -131,6 +147,9 @@ class BendersCallback(cp.CallbackBase):
                 self._iter += 1
             else:
                 self.interrupt()
+
+            # 添加下界
+            self.global_LB.append(self.getSolution(self._m_var_q))
         else:
             print("Unregistered callback context\n")
             sys.exit()
@@ -158,6 +177,10 @@ class FCTP:
         self.s_constr_demand = []
         self.s_constr_supply = []
         self.s_constr_link = []
+
+        # Initialize UB and LB
+        self.global_UB = []
+        self.global_LB = []
 
         # Initialize COPT environment
         self.coptenv = cp.Envr()
@@ -259,7 +282,7 @@ class FCTP:
         bdcallback = BendersCallback(self.nsuppliers, self.ndemanders, self.supply, self.demand, self.fixcost, \
                                      self.m_var_q, self.m_var_y, self.subprob, self.bigM, \
                                      self.s_var_x, self.s_constr_demand, \
-                                     self.s_constr_supply, self.s_constr_link)
+                                     self.s_constr_supply, self.s_constr_link, self.global_UB, self.global_LB)
 
         # Solve the master problem
         print("               *** Benders Decomposition Loop ***               ")
@@ -269,6 +292,9 @@ class FCTP:
 
         # Solve the subproblem
         self.subprob.solve()
+
+        print("global UB = ", self.global_UB)
+        print("global LB = ", self.global_LB)
 
     def report(self):
         print("               *** Summary Report ***               ")
