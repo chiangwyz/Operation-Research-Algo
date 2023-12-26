@@ -19,6 +19,12 @@ s.t. f(x) <= a \\
      x \in R
 $$
 
+$$
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a} \\
+\text{where } a, b, \text{ and } c \text{ are coefficients of the quadratic equation.}
+$$
+
+
 
 这里有一个细节，为什么在拉格朗日松弛算法中，当约束条件是g(x)≤b 时，我们在拉格朗日函数中使用 u(g(x)−b) 而不是 u(b−g(x))。
 
