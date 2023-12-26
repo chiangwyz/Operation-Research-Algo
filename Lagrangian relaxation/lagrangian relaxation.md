@@ -13,7 +13,7 @@
 ## 约束条件松弛后在目标函数的形式
 
 $$
-min = c x \\
+min = c \cdot x \\
 s.t. f(x) <= a \\
      g(x) <= b \\
      x \in R
