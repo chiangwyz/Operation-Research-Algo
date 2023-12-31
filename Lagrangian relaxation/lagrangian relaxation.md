@@ -13,9 +13,9 @@
 ## 约束条件松弛后在目标函数的形式
 
 $$
-min = c \cdot x \newline 
-s.t. f(x) <= a \newline
-     g(x) <= b \newline
+min = c \cdot x\\ 
+s.t. f(x) <= a\\
+     g(x) <= b\\
      x \in R
 $$
 
