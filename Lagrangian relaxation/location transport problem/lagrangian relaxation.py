@@ -3,6 +3,7 @@
 DAPEI Jiang
 Lagrangian relaxation on LTP
 Referencing on https://github.com/wujianjack/optimizationmodels/tree/master/gurobi/locationtransport, with modifications.
+subgradient 使用 Kalvelagen, 2002上的方法
 """
 
 import coptpy as cp
@@ -129,10 +130,10 @@ class LagrangianRelaxation:
 
     def LRsubGradientSolve(self):
         # 'Lagrangian Relaxation' parameters
-        same = 0
+        no_change_count = 0
         norm = 0.0
-        step = 0.0
-        theta = 1.0     # theta = 2.0，
+        step_size = 0.0
+        theta = 2.0
         xLB = 0.0
         xUB = 0.0
         lagrangian_multiplier = [0.0] * self.customerNum
@@ -143,12 +144,12 @@ class LagrangianRelaxation:
 
         # initial lower bound lb through LP relaxation
         xLB = self.getRelaxUB(self.LTP_model)
-        print("LB = ", xLB)
+        print("initial LB = ", xLB)
 
         # initial UB through sum all max travelcost
         for i in range(self.customerNum):
             xUB += max(self.travelCost[i])
-        print("UB = ", xUB)
+        print("initial UB = ", xUB)
 
         # temporary linear expression
         obj_total_travel_cost_linear_expression = cp.quicksum(self.var_x[i][j] * self.travelCost[i][j] for i in range(self.customerNum) for j in range(self.customerNum))
@@ -160,7 +161,7 @@ class LagrangianRelaxation:
         for iter in range(self.iterLimit):
             print("iter = ", iter)
 
-            # solve lower bound
+            # decide is or not to remove constraints
             if not isModelLagrangianRelaxed:
                 isModelLagrangianRelaxed = True
                 
@@ -171,14 +172,14 @@ class LagrangianRelaxation:
                 self.relax_cons_demand = []
 
             # lagrangian relaxation term : sum_{j \in C} u_j * (d_j - sum_{i \in D} x_{ij})
-            obj_lagrangian_relaxed_term = cp.quicksum(lagrangian_multiplier[j] * (self.demand[j] - cp.quicksum(self.var_x[i][j] for i in range(self.customerNum))) for j in range(self.customerNum))
+            obj_lagrangian_relaxation_term = cp.quicksum(lagrangian_multiplier[j] * (self.demand[j] - cp.quicksum(self.var_x[i][j] for i in range(self.customerNum))) for j in range(self.customerNum))
 
             # lagrangian relaxation objective: sum_{i \in D, j \in c} c_{ij} * x_{ij} + sum_{j \in C} u_j * d_j - sum_{i \in D, j \in c} u_j * x_{ij}
-            self.LTP_model.setObjective(obj_total_travel_cost_linear_expression + obj_lagrangian_relaxed_term, COPT.MINIMIZE)
+            self.LTP_model.setObjective(obj_total_travel_cost_linear_expression + obj_lagrangian_relaxation_term, COPT.MINIMIZE)
 
-            # solve relaxed(LP) model  and obtain lower bound
+            # solve lagrangian bound model and obtain lower bound, it's a MIP, not LP, so the x is integer variable
             self.LTP_model.solve()
-            print("LTP model objval: ", self.LTP_model.ObjVal)
+            print("LTP model objval: ", self.LTP_model.objval)
 
             # calculate slacks for each relaxed constraints by the solution x
             for j in range(self.customerNum):
@@ -189,25 +190,25 @@ class LagrangianRelaxation:
             # update lower bound if there has any improvement, or keep the no change count
             if self.LTP_model.objval > xLB + 1e-6:
                 xLB = self.LTP_model.objval
-                same = 0
+                no_change_count = 0
             else:
-                same += 1
+                no_change_count += 1
 
             # if within k steps no improvement, update
-            if same == self.noChangeLimit:
+            if no_change_count == self.noChangeLimit:
                 theta /= 2.0
-                same = 0
+                no_change_count = 0
 
             # calculate ''2-norm
             squareSum = sum(slack[i]**2 for i in range(self.customerNum))
 
-            # update step size
-            step = theta * (xUB - self.LTP_model.objval) / squareSum
+            # update step_size size
+            step_size = theta * (xUB - self.LTP_model.objval) / squareSum
 
             # update lagrangian multipliers with update equations
             for i in range(self.customerNum):
-                if lagrangian_multiplier[i] > step * slack[i]:
-                    lagrangian_multiplier[i] = lagrangian_multiplier[i] - step * slack[i]
+                if lagrangian_multiplier[i] > step_size * slack[i]:
+                    lagrangian_multiplier[i] = lagrangian_multiplier[i] - step_size * slack[i]
                 else:
                     lagrangian_multiplier[i] = 0.0
 
@@ -218,9 +219,10 @@ class LagrangianRelaxation:
             selected_facility_supply = sum(self.supply[j] * self.var_y[j].x for j in range(self.customerNum))
             sum_all_demand = sum(self.demand)
 
+            # store y value
             temp_y_value = []
             for i in range(self.customerNum):
-                # print("var_y {} {}".format(i, self.var_y[i].x))
+                print("var_y {} {}".format(i, self.var_y[i].x))
                 temp_y_value.append(self.var_y[i].x)
 
             print("selected facility supply =", selected_facility_supply)
@@ -259,7 +261,7 @@ class LagrangianRelaxation:
             # update LB, UB, step size, theta
             self.xLBlog.append(xLB)
             self.xUBlog.append(xUB)
-            self.stepSizeLog.append(step)
+            self.stepSizeLog.append(step_size)
             self.thetaLog.append(theta)
 
     def getRelaxUB(self, locationTransModel):
@@ -272,7 +274,7 @@ class LagrangianRelaxation:
 
     def reportInformation(self):
         print("\n               *** Summary Report ***               \n")
-        print("  Iter        LB               UB          theta        step")
+        print("  Iter        LB               UB          theta        step_size")
 
         for i in range(len(self.xLBlog)):
             print("  %3d    %12.6f    %12.6f    %8.6f    %8.6f" \
