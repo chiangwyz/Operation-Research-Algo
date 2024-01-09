@@ -17,6 +17,8 @@ import math
 class ShortestPathProblemDijkstra:
     def __init__(self):
         self.nodes = ['1', '2', '3', '4', '5', '6', '7']
+        self.original_node = "1"
+        self.destination_node = "7"
 
         self.arcs = {
             ('1', '2'): 15,
@@ -64,16 +66,13 @@ class ShortestPathProblemDijkstra:
             self.nodes_position[name] = (x_coor, y_coor)
 
         # add edges
-        for key in self.arcs.keys():
-            self.Graph.add_edge(key[0], key[1], length=self.arcs[key], traveTime=0)
-
-
-
+        for key, value in self.arcs.items():
+            self.Graph.add_edge(key[0], key[1], length=value, traveTime=0)
 
     def Dijkstra(self, org, des):
-        # 定义bigM
+        # 定义无穷大
         big_M = 9999999
-        # 将每个点对应的最小距离初始化为无穷大以及初始化队列
+        # 初始化当前节点最短距离与其他节点最短距离
         Queue = []
         for node in self.Graph.nodes:
             Queue.append(node)
@@ -95,7 +94,7 @@ class ShortestPathProblemDijkstra:
             if current_node is not None:
                 Queue.remove(current_node)
 
-            # 对每个邻居进行循环
+            # 遍历历每个邻节点
             for child in self.Graph.successors(current_node):
                 arc_key = (current_node, child)
                 dis_temp = self.Graph.nodes[current_node]['min_dis'] + self.Graph.edges[arc_key]['length']
@@ -103,18 +102,18 @@ class ShortestPathProblemDijkstra:
                     self.Graph.nodes[child]['min_dis'] = dis_temp
                     self.Graph.nodes[child]['previous_node'] = current_node
 
-        opt_dis = self.Graph.nodes[des]['min_dis']
+        optimal_distance = self.Graph.nodes[des]['min_dis']
         current_node = des
-        opt_path = [current_node]
+        optimal_path = [current_node]
         while current_node != org:
             current_node = self.Graph.nodes[current_node]['previous_node']
-            opt_path.insert(0, current_node)
+            optimal_path.insert(0, current_node)
 
-        return opt_dis, opt_path
+        return optimal_distance, optimal_path
 
     def plot_network(self):
         # 创建包含路径中所有边的列表
-        path_edges = [(opt_path[i], opt_path[i + 1]) for i in range(len(opt_path) - 1)]
+        path_edges = [(optimal_path[i], optimal_path[i + 1]) for i in range(len(optimal_path) - 1)]
 
         # 定义路径中的边和其它边的颜色
         color_map = ['red' if edge in path_edges else 'black' for edge in self.Graph.edges()]
@@ -135,7 +134,7 @@ class ShortestPathProblemDijkstra:
 if __name__ == "__main__":
     SPP = ShortestPathProblemDijkstra()
     SPP.build_graph()
-    opt_dis, opt_path = SPP.Dijkstra('1', '7')
-    print('optimal distance : ', opt_dis)
-    print('optimal path : ', opt_path)
+    optimal_distance, optimal_path = SPP.Dijkstra(SPP.original_node, SPP.destination_node)
+    print('optimal distance : ', optimal_distance)
+    print('optimal path : ', optimal_path)
     SPP.plot_network()
