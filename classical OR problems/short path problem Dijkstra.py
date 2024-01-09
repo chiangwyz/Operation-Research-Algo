@@ -102,6 +102,7 @@ class ShortestPathProblemDijkstra:
                     self.Graph.nodes[child]['min_dis'] = dis_temp
                     self.Graph.nodes[child]['previous_node'] = current_node
 
+
         optimal_distance = self.Graph.nodes[des]['min_dis']
         current_node = des
         optimal_path = [current_node]
