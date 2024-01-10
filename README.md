@@ -2,14 +2,21 @@
 
 2024年1月9日17:19:08
 目前已有的主题有：
+
 经典运筹优化问题建模：
+
 分配问题
+
 最短路问题
+
 旅行商问题
 
 benders decomposition
+
 lagrangian relaxation
+
 branch and bound
+
 callback 
 
 
