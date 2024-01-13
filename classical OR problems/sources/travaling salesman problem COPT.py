@@ -9,7 +9,6 @@ We use VRP case c101 to generate the problem.
 """
 
 import re
-import sys
 import math
 import matplotlib.pyplot as plt
 
@@ -24,12 +23,12 @@ def find_subtour(solution: cp.tupledict) -> list[int]:
     """
 
     # edges (i, j) is tuplelist type
-    edges = cp.tuplelist((i, j)
-                      for i, j in solution.keys() if solution[i, j] > 0.5)
+    edges = cp.tuplelist((i, j) for i, j in solution.keys() if solution[i, j] > 0.5)
     unvisited = list(range(data.nodeNum))
 
     # Initialize sub-tour with one more city
     bestTour = range(data.nodeNum + 1)
+    # bestTour = range(1)
     while unvisited:  # When still having unvisited cities
         tour = []
         # Initialize neighbors with first unvisited city
@@ -77,12 +76,12 @@ class TSPCallback(cp.CallbackBase):
 
     def callback(self) -> None:
         if self.where() == COPT.CBCONTEXT_MIPSOL:
-            print("invoke callback")
+            # print("invoke callback")
 
             # solution is a tupledict
             solution = self.getSolution(self._vars)
-            for sol_key, sol_value in solution.items():
-                print("{} = {}".format(sol_key, sol_value))
+            # for sol_key, sol_value in solution.items():
+            #     print("{} = {}".format(sol_key, sol_value))
             tour = find_subtour(solution)
             sz = len(tour)
             if sz < self._nodeNum:
