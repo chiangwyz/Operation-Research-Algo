@@ -129,3 +129,10 @@ dmypy.json
 .pyre/
 
 .idea/
+
+# COPT cache
+*.bas
+*.lp
+*.mps
+*.par
+*.sol

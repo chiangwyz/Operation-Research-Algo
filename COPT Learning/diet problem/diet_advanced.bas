@@ -1,3 +1,0 @@
-NAME          COPTPROB
- XU C(MCH)    R0000003
-ENDATA
