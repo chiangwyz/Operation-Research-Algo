@@ -109,3 +109,8 @@ allduals = model.getDuals()
 for (constr, dual, slack) in zip(constr_list, allduals, allslacks):
     print("约束{0}，对偶变量的值{1:.4f}，松弛变量的值{1:.4f}".format(constr.getName(), dual, slack))
 
+model.write("diet_advanced.mps")
+model.write("diet_advanced.bas")
+model.write("diet_advanced.sol")
+model.write("diet_advanced.par")
+model.write("diet_advanced.lp")
