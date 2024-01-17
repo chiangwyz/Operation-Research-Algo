@@ -1,6 +1,8 @@
 # Dantzig-Wolfe Decomposition
 
-*参考自：https://space.bilibili.com/696855224
+参考自：
+*https://space.bilibili.com/696855224
+*运筹优化常用模型、算法及案例实战——Python+Java实现, 刘兴禄，熊望祺，臧永森，段宏达，曾文佳, 清华大学出版社, 2022-10-01
 
 ## 基本介绍
 
@@ -102,4 +104,113 @@ $$,
 *注意这里的IPM与P是完全等价的，只是变量换了形式，原来是整数规划问题，现在是0-1变量问题。*
 
 
+## 模型分解
 
+### 块角模型
+
+考虑下面的线性规划问题：
+
+$$
+\begin{aligned}
+ \min &  & c^Tx  \\
+ s.t. & & Ax \leq b \\
+      & & x \in R^n \\
+\end{aligned}
+$$,
+
+其中约束矩阵A有以下特定结构：
+
+
+
+$$
+Ax = \left[
+\begin{matrix}
+B_0 & B_1 & B_2 & \cdots & B_K \\
+ & A_1 &   &   &   \\
+  &   & A_2 &   &   \\
+  &   &   & \ddots &  \\
+  &   &   & &   A_K \\
+\end{matrix}
+\right]
+\left[
+\begin{matrix}
+x_0  \\
+x_1  \\
+x_2  \\
+\vdots  \\
+x_4  \\
+\end{matrix}
+\right]=\left[
+\begin{matrix}
+b_0  \\
+b_1  \\
+b_2  \\
+\vdots  \\
+b_K  \\
+\end{matrix}
+\right]
+$$
+
+其中，约束矩阵中的第一行，称之为链接约束，我们也称之为难约束(hard constraint)。
+
+D-W分解算法的思想就是将上述模型进行分解，而不是考虑所有约束一起求解，将问题分解为主题和若干子问题进行求解，主问题考虑链接约束，子问题进行分开求解，从而只有一系列更小规模的问题需要我们求解。
+
+### Minkowski表示定理
+
+参考自：
+Kalvelagen, Erwin. "Two-stage stochastic linear programming with GAMS." GAMS Corporation (2003).
+
+考虑线性规划问题的可行域：
+
+$$
+\begin{aligned}
+P = \{x|Ax=b, x \geq 0\}
+\end{aligned}\tag{1}
+$$
+如果$P$是有界的，那么可以将点$x\in P$表示成$P$的极点$x^{(j)}$的线性组合形式，如下：
+$$
+\begin{aligned}
+x = \sum_{j} \lambda_j x^{(j)} \\
+\sum_{j} \lambda_j  = 1 \\
+\lambda_j \geq 0
+\end{aligned}\tag{2}
+$$
+如果$P$是不是有界的情况，那么需要引入极射线，如下：
+$$
+\begin{aligned}
+x = \sum_{j} \lambda_j x^{(j)} + \sum_{i} \mu_i r^{(i)} \\
+\sum_{j} \lambda_j  = 1 \\
+\lambda_j \geq 0 \\
+\mu_i \geq 0
+\end{aligned}\tag{3} 
+$$
+
+其中式子$r^{(i)}$是$P$的极射线，上述表述被称作Minkowski表示定理，约束$\sum_{j} \lambda_j =1$即上文提到的凸约束。
+
+也可以使用如下的更加一般的表达式：
+
+$$
+\begin{aligned}
+x = \sum_{j} \lambda_j x^{(j)}  \\
+\sum_{j} \delta_j \lambda_j  = 1 \\
+\lambda_j \geq 0 \\
+\mu_i \geq 0
+\end{aligned}\tag{3} 
+$$
+其中，
+$$
+\begin{aligned}
+\delta_j  = \left\{ 
+        \begin{array}{ll} 
+        1, & x^{(j)} 是一个极点  \\ 
+        0, & x^{(j)} 是一个极射线
+        \end{array} 
+        \right.
+\end{aligned}
+$$
+
+通过上述形式，就可以把原问题关于变量$x$的形式转换为关于变量$\lambda$的形式，当然，随着变量$\lambda_j$的数量增多，该模型逐渐变得不能直接使用商业求解器求解。
+
+### 补充知识
+
+上述提到的极点与极射线是凸分析和线性规划领域的一个重要概念，尤其是在处理无界可行域时，我们需要厘清这些概念的含义及其之间的关系：
