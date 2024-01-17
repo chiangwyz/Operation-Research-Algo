@@ -195,7 +195,7 @@ x = \sum_{j} \lambda_j x^{(j)}  \\
 \sum_{j} \delta_j \lambda_j  = 1 \\
 \lambda_j \geq 0 \\
 \mu_i \geq 0
-\end{aligned}\tag{3} 
+\end{aligned}\tag{4} 
 $$
 其中，
 $$
@@ -214,3 +214,109 @@ $$
 ### 补充知识
 
 上述提到的极点与极射线是凸分析和线性规划领域的一个重要概念，尤其是在处理无界可行域时，我们需要厘清这些概念的含义及其之间的关系：
+
+1). 极点（Extreme Points）：在凸集中，极点是不能表示为其他两个不同点的凸组合的点。在很多情况下，极点是定义凸集形状的关键点。
+
+2). 极射线（Extreme Rays）/极方向（Extreme Directions）：对于一个无界的凸集，极射线是指从凸集内的一点出发，沿着某个方向无限延伸的射线，这个射线完全位于凸集内部。在无界可行域的情况下，极射线代表着可行解可以无限远地延伸的方向。
+
+3). 凸组合和锥组合：凸组合是指系数和为1的线性组合，而锥组合则是系数为非负的线性组合。
+
+凸组合（Convex Combination）:
+
+定义：在向量空间中，如果有一组向量 $v_1, v_2, \cdots, v_i$ 和一组非负实数 $\lambda_1, \lambda_2, \cdots, \lambda_i$，且满足 $\sum_{i} \lambda_i  = 1, \lambda_i \geq 0 $，那么这些向量的线性组合被称为它们的凸组合。
+
+特点：凸组合的关键在于系数之和必须等于1，并且每个系数都是非负的。这意味着凸组合产生的新向量位于原始向量形成的凸集内。
+
+锥组合（Conic Combination）:
+
+定义：在向量空间中，如果有一组向量 $v_1, v_2, \cdots, v_i$ 和一组非负实数 $\lambda_1, \lambda_2, \cdots, \lambda_i$，且满足 $\lambda_i \geq 0$，那么这些向量的线性组合被称为它们的锥组合。
+​
+
+特点：锥组合与凸组合的主要区别在于，锥组合的系数之和不一定等于1，但系数依然需要是非负的。锥组合形成的结构是一个锥形，而不是凸集。
+
+区别:
+1. 凸组合的核心在于系数之和必须等于1，而锥组合没有这个要求。
+2. 凸组合产生的结果总是位于原始向量形成的凸集内部或边界上，而锥组合形成的是一个无限延伸的锥形。
+3. 凸组合用于表达介于原始向量之间的点，而锥组合用于表达原始向量形成的锥形空间内的所有点。
+
+### 模型分解
+
+下面将模型分解成主问题和K个子问题，K个子问题有如下约束形式：
+
+$$
+\begin{aligned}
+A_k x_k = b_k \\
+x_k \geq 0
+\end{aligned} 
+$$
+
+主问题如下：
+
+$$
+\begin{aligned}
+ \min &  & c_k^Tx_k  \\
+ s.t. & & B_kx_k = b_0 \\
+      & & x_0 \geq 0 \\
+\end{aligned}
+$$,
+
+我们将极点与极射线式代入到上述的主问题，得到
+
+$$
+\begin{aligned}
+ \min &  & c_0^Tx_0 + \sum_{k=1}^{K}\sum_{j=1}^{p_k} (c_k^Tx_k^{(j)}) \lambda_{k,j} \\
+ s.t. & & B_0x_0 + \sum_{k=1}^{K}\sum_{j=1}^{p_k} (B_kx_k^{(j)}) \lambda_{k,j}  = b_0 \\
+      & & \sum_{j=1}^{p_k} \delta_{k,j} \lambda_{k,j}  = 1, \forall k \in 1, 2, \cdots, K \\
+      & & x_0 \geq 0 \\
+      & & \lambda_{k,j} \geq 0
+\end{aligned}
+$$,
+
+这其中，$p_k$是第$k$个子问题的极点个数，这个线性规划问题的变量很多(注意，该问题的变量已经为$\lambda_{k,j}$)，所以直接求解仍然不切实际，借鉴列生成的思想，只考虑那些检验数有希望为负数的变量。$x_0$为决策变量的第一个，在这里，我们可以假定通过其它启发式算法或者规则获得它的值。
+
+由此得到限制性主问题(Restricted Master Problem)，模型如下：
+$$
+\begin{aligned}
+ \min &  & c_0^Tx_0 + c^T \lambda' \\
+ s.t. & & B_0x_0 + B\lambda'  = b_0 \\
+      & & \Delta\lambda' = 1 \\
+      & & x_0 \geq 0 \\
+      & & \lambda_{k,j} \geq 0
+\end{aligned}
+$$ 
+限制主问题的列是不固定的，随着列生成，会有新的列加入该模型中，评价变量$\lambda_{k,j}$是否可以被加入到主问题模型中的规则为其检验数（reduced cost），将链接约束$B_0x_0 + B\lambda'  = b_0$对应的对偶变量记为$\pi_1$，把凸约束$\sum_{j=1}^{p_k} \delta_{k,j} \lambda_{k,j}  = 1, \forall k \in K$的对偶变量记作$\pi^k_2$，则主问题中变量$\lambda'_{k,j}$的检验数可以写作
+
+$$
+\sigma_{k,j} = (c_k^Tx_k^{(j)}) - \pi^T
+\left(
+\begin{matrix}
+B_k x_k^{(j)} \\
+\delta_{k,j} \\
+\end{matrix}
+\right) = (c^T_k - \pi^T_1 B_k)x_k^{(j)} -\pi^T_2 \delta_{k,j}
+$$
+
+如果子问题是有界的，那么通过检验数评价后，最有希望改进主问题的基本可行解$x_k$可以通过求解下面以检验数为目标函数的模型得到：
+
+$$
+\begin{aligned}
+ \min_{x_k} &  & \sigma_k = (c^T_k - \pi^T_1 B_k)x_k -\pi^T_2 \\
+ s.t. &  &A_k x_k = b_k \\
+&  &x_k \geq 0
+\end{aligned}
+$$ 
+
+寻找这些检验数的过程叫做pricing，如果$\sigma_k \leq 0$，就可以将新列$\lambda_{k,j}$加入主问题中，该列的成本系数为$c_k^T x_k^*$(注意该成本系数为原主问题的成本系数)。
+
+## 算例
+
+$$
+\begin{aligned}
+ \max & & z = 90x_1& +80x_2& +70x_3& +60x_4 &  \\
+s.t.  & & 3x_1 & + x_2 &  & &\leq 12  \\
+      & & 2x_1 & + x_2 & & &\leq 10  \\
+      & &  & &3x_3 & + 2x_4 &\leq 15  \\
+      & &  & &x_3 & + x_4 &\leq 4 \\
+      & &  x_1&, x_2 &,x_3 & , x_4 & \geq 0
+\end{aligned}
+$$ 
