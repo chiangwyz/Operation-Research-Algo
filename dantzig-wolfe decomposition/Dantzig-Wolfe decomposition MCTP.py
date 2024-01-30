@@ -1,6 +1,6 @@
 """
 2024-1-18 17:44：36
-MCTP solve by dantzig-wolfe decomposition with COPT, for more information, please visit the:https://www.shanshu.ai/copt
+MCTP solve by dantzig-wolfe decomposition with COPT, for more information, please visit https://www.shanshu.ai/copt
 """
 
 from __future__ import division, print_function, annotations
@@ -19,7 +19,7 @@ class MCTP_DW:
         self.capacity_arc = []
         self.travel_cost = []
 
-        # initialize variables and constraints
+        # initialize COPT environment, variables and constraints
         self.coptenv = cp.Envr()
         self.cmulti = []
         self.vtrans = []
@@ -27,7 +27,7 @@ class MCTP_DW:
 
         # initialize parameters
         self.iter = 0
-        self.priceconvex = 1.0
+        self.price_convex = 1.0
         self.price = []
         self.propcost = []
 
@@ -46,29 +46,29 @@ class MCTP_DW:
         current_line = 3
         for i in range(self.number_origins):
             column = lines[current_line].split()
-            lsupply = [float(column[k]) for k in range(self.number_products)]
-            self.supply_orig.append(lsupply)
+            tmp_supply = [float(column[k]) for k in range(self.number_products)]
+            self.supply_orig.append(tmp_supply)
             current_line += 1
 
         for j in range(self.number_destinations):
             column = lines[current_line].split()
-            ldemand = [float(column[k]) for k in range(self.number_products)]
-            self.demand_dest.append(ldemand)
+            tmp_demand = [float(column[k]) for k in range(self.number_products)]
+            self.demand_dest.append(tmp_demand)
             current_line += 1
 
         for i in range(self.number_origins):
             column = lines[current_line].split()
-            llcapacity = [float(column[j]) for j in range(self.number_destinations)]
-            self.capacity_arc.append(llcapacity)
+            tmp_capacity = [float(column[j]) for j in range(self.number_destinations)]
+            self.capacity_arc.append(tmp_capacity)
             current_line += 1
 
         for i in range(self.number_origins):
-            lcost = []
+            tmp_cost = []
             for j in range(self.number_destinations):
                 column = lines[current_line].split()
-                llcost = [float(column[k]) for k in range(self.number_products)]
-                lcost.append(llcost)
-            self.travel_cost.append(lcost)
+                ttmp_cost = [float(column[k]) for k in range(self.number_products)]
+                tmp_cost.append(ttmp_cost)
+            self.travel_cost.append(tmp_cost)
             current_line += 1
 
     def print_data(self):
@@ -91,26 +91,26 @@ class MCTP_DW:
             for j, cost in enumerate(costs):
                 print(f"  To Destination {j + 1}: {cost}")
 
-    def build_mode(self):
+    def build_model(self):
         try:
             self.master_model = self.coptenv.createModel("MCTP_DW_master")
             self.sub_model = self.coptenv.createModel("MCTP_DW_subr")
 
             # open console output
-            self.master_model.setParam(COPT.Param.Logging, 0)
-            self.sub_model.setParam(COPT.Param.Logging, 0)
+            self.master_model.setParam(COPT.Param.Logging, 1)
+            self.sub_model.setParam(COPT.Param.Logging, 1)
 
-            # add variable "excess" for master problem
-            self.vexcess = self.master_model.addVar(lb=0.0, ub=COPT.INFINITY, obj=0.0, vtype=COPT.CONTINUOUS)
+            # add temp variable for restrict master problem
+            self.rmp_tmp_var = self.master_model.addVar(lb=0.0, ub=COPT.INFINITY, obj=0.0, vtype=COPT.CONTINUOUS)
 
             for i in range(self.number_origins):
                 tmp_con = []
                 for j in range(self.number_destinations):
-                    tmp_con.append(self.master_model.addConstr(-self.vexcess <= self.capacity_arc[i][j]))
+                    tmp_con.append(self.master_model.addConstr(-self.rmp_tmp_var <= self.capacity_arc[i][j]))
                 self.cmulti.append(tmp_con)
 
             # tricky approach to add temporary constraint 'convex' for master problem
-            self.cconvex = self.master_model.addConstr(1e-6 * self.vexcess == 1.0)
+            self.cconvex = self.master_model.addConstr(1e-6 * self.rmp_tmp_var == 1.0)
 
             """
             construct subproblem
@@ -148,11 +148,11 @@ class MCTP_DW:
             lprice = [0.0] * self.number_destinations
             self.price.append(lprice)
 
-        obj_masteri = self.vexcess
+        obj_masteri = self.rmp_tmp_var
         obj_subi = -cp.quicksum(self.price[i][j] * self.vtrans[i][j][k] \
                                    for i in range(self.number_origins) \
                                    for j in range(self.number_destinations) \
-                                   for k in range(self.number_products)) - self.priceconvex
+                                   for k in range(self.number_products)) - self.price_convex
 
         # set objective for master problem in 'Phase I'
         self.master_model.setObjective(obj_masteri, COPT.MINIMIZE)
@@ -161,7 +161,7 @@ class MCTP_DW:
         self.sub_model.setObjective(obj_subi, COPT.MINIMIZE)
 
         # ok, forget this
-        self.master_model.setCoeff(self.cconvex, self.vexcess, 0.0)
+        self.master_model.setCoeff(self.cconvex, self.rmp_tmp_var, 0.0)
 
         # 'Phase I' of dantzig-wolfe decomposition
         print("Phase I: ")
@@ -200,8 +200,8 @@ class MCTP_DW:
                 # solve master problem in 'Phase I'
                 self.master_model.solve()
 
-                # get the vexcess value
-                self.tmp_value = self.vexcess.x
+                # get the rmp_tmp_var value
+                self.tmp_value = self.rmp_tmp_var.x
 
                 # update price
                 if self.master_model.objval <= 1e-6:
@@ -211,13 +211,13 @@ class MCTP_DW:
                         for j in range(self.number_destinations):
                             self.price[i][j] = self.cmulti[i][j].pi
 
-                    self.priceconvex = self.cconvex.pi
+                    self.price_convex = self.cconvex.pi
 
                 # reset objective for subproblem in 'Phase I'
                 obj_subi = -cp.quicksum(self.price[i][j] * self.vtrans[i][j][k] \
                                            for i in range(self.number_origins) \
                                            for j in range(self.number_destinations) \
-                                           for k in range(self.number_products)) - self.priceconvex
+                                           for k in range(self.number_products)) - self.price_convex
 
                 self.sub_model.setObjective(obj_subi, COPT.MINIMIZE)
 
@@ -232,8 +232,8 @@ class MCTP_DW:
         self.master_model.setObjective(obj_masterii, COPT.MINIMIZE)
 
         # fix variable 'excess'
-        self.vexcess.lb = self.tmp_value
-        self.vexcess.ub = self.tmp_value
+        self.rmp_tmp_var.lb = self.tmp_value
+        self.rmp_tmp_var.ub = self.tmp_value
 
         # solve master problem in 'Phase II'
         self.master_model.solve()
@@ -243,13 +243,13 @@ class MCTP_DW:
             for j in range(self.number_origins):
                 self.price[i][j] = self.cmulti[i][j].pi
 
-        self.priceconvex = self.cconvex.pi
+        self.price_convex = self.cconvex.pi
 
         # set objective for subproblem in 'Phase II'
         obj_subii = cp.quicksum((self.travel_cost[i][j][k] - self.price[i][j]) * self.vtrans[i][j][k] \
                                    for i in range(self.number_origins) \
                                    for j in range(self.number_destinations) \
-                                   for k in range(self.number_products)) - self.priceconvex
+                                   for k in range(self.number_products)) - self.price_convex
 
         self.sub_model.setObjective(obj_subii, COPT.MINIMIZE)
 
@@ -298,13 +298,13 @@ class MCTP_DW:
                     for j in range(self.number_destinations):
                         self.price[i][j] = self.cmulti[i][j].pi
 
-                self.priceconvex = self.cconvex.pi
+                self.price_convex = self.cconvex.pi
 
                 # reset objective for subproblem in 'Phase II'
                 obj_subii = cp.quicksum((self.travel_cost[i][j][k] - self.price[i][j]) * self.vtrans[i][j][k] \
                                            for i in range(self.number_origins) \
                                            for j in range(self.number_destinations) \
-                                           for k in range(self.number_products)) - self.priceconvex
+                                           for k in range(self.number_products)) - self.price_convex
 
                 self.sub_model.setObjective(obj_subii, COPT.MINIMIZE)
 
@@ -320,7 +320,7 @@ class MCTP_DW:
         # set objective for master problem in 'Phase III'
         for i in range(self.number_origins):
             for j in range(self.number_destinations):
-                optship[i][j] = self.capacity_arc[i][j] + self.vexcess.x - self.cmulti[i][j].slack
+                optship[i][j] = self.capacity_arc[i][j] + self.rmp_tmp_var.x - self.cmulti[i][j].slack
 
         obj_masteriii = cp.quicksum(self.travel_cost[i][j][k] * self.vtrans[i][j][k] \
                                        for i in range(self.number_origins) \
@@ -338,7 +338,7 @@ class MCTP_DW:
 
     def solve(self):
         # build 'master' and 'sub'
-        self.build_mode()
+        self.build_model()
 
         # dantzig-wolfe decomposition
         print("               *** Dantzig-Wolfe Decomposition ***               ")

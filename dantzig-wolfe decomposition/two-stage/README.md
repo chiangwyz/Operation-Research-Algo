@@ -1,0 +1,1 @@
+This is a notes about step by step to learn D-W decomposition.
