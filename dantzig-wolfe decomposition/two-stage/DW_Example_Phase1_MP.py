@@ -35,7 +35,8 @@ def DW_Example_Phase1():
     model.setInfo(COPT.Info.LB, rmp_cons[2], 0.0)
     model.setInfo(COPT.Info.UB, rmp_cons[2], 0.0)
 
-    model.write("rmp.lp")
+    model.write("rmp_ph1.lp")
+    model.write("rmp_ph1.mps")
 
     model.solve()
 
