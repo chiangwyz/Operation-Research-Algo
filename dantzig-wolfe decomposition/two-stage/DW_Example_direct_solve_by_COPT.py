@@ -96,11 +96,11 @@ def solve_DW_example(flag: bool = True) -> None:
         # Optimal objective value
         print("objective value：{:.4f}".format(model.objval))
         allvars = model.getVars()
-        #Variable value
+        # Variable value
         print("\nValue of each variable:\n")
         for var in allvars:
             print("决策变量{0},最优值为 {1:.4f}，基状态为：{2}".format(var.name, var.x, var.basis))
 
 
 if __name__ == "__main__":
-    solve_DW_example(True)
+    solve_DW_example(False)
