@@ -14,7 +14,7 @@ class MCTP_DW:
         self.number_origins = 0
         self.number_destinations = 0
         self.number_products = 0
-        self.supply_orig = []
+        self.origins_supply = []
         self.demand_dest = []
         self.capacity_arc = []
         self.travel_cost = []
@@ -47,7 +47,7 @@ class MCTP_DW:
         for i in range(self.number_origins):
             column = lines[current_line].split()
             tmp_supply = [float(column[k]) for k in range(self.number_products)]
-            self.supply_orig.append(tmp_supply)
+            self.origins_supply.append(tmp_supply)
             current_line += 1
 
         for j in range(self.number_destinations):
@@ -77,7 +77,7 @@ class MCTP_DW:
         print("Number of Destinations:", self.number_destinations)
         print("Number of Products:", self.number_products)
         print("\nSupply:")
-        for i, supply in enumerate(self.supply_orig):
+        for i, supply in enumerate(self.origins_supply):
             print(f"Origin {i + 1}: {supply}")
         print("\nDemand:")
         for j, demand in enumerate(self.demand_dest):
@@ -129,7 +129,7 @@ class MCTP_DW:
             for i in range(self.number_origins):
                 for k in range(self.number_products):
                     self.sub_model.addConstr(cp.quicksum(self.vtrans[i][j][k] for j in range(self.number_destinations))
-                                             == self.supply_orig[i][k])
+                                             == self.origins_supply[i][k])
 
             # add demand constraint for subproblem
             for j in range(self.number_destinations):
