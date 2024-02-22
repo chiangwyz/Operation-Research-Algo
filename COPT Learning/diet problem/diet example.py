@@ -3,10 +3,11 @@ This is a COPT learning document, not for commercial use. It is mainly for recor
 For specific examples, please refer to: https://coridm.d2d.ai/courses/32/supplement/779
 """
 
-from coptpy import *
+import coptpy as cp
+from coptpy import COPT
 
 # Create environment
-env = Envr()
+env = cp.Envr()
 
 # Create model
 model = env.createModel(name="diet_simple")
@@ -40,7 +41,8 @@ model.solve()
 #Analyze solution
 if model.status == COPT.OPTIMAL:
     # Optimal objective value
-    print("最小食谱构建费用：{:.4f}".format(model.objval))
+    print("\n\n最优解与最优方案为:\n")
+    print("最小食谱构建费用：{0:.4f}".format(model.objval))
     allvars = model.getVars()
     #Variable value
     print("\nValue of each variable:\n")
