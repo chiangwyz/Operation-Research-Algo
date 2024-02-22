@@ -1,3 +1,8 @@
+"""
+This is a COPT learning document, not for commercial use. It is mainly for recording and archiving the study and use of COPT interfaces.
+For specific examples, please refer to: https://coridm.d2d.ai/courses/32/supplement/779
+"""
+
 import coptpy as cp
 from coptpy import COPT
 import itertools
@@ -71,10 +76,6 @@ model.setObjective(cp.quicksum(cost[f]*buy[f] for f in foods), sense=COPT.MINIMI
 model.solve()
 print("---"*30)
 print("模型求解状态：", model.status)
-
-# 计算不可行问题的IIS
-model.computeIIS()
-
 
 # Compute IIS if problem is infeasible
 if model.status == COPT.INFEASIBLE:
