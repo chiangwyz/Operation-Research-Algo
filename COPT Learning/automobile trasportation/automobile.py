@@ -1,3 +1,7 @@
+"""
+This is a COPT learning document, not for commercial use. It is mainly for recording and archiving the study and use of COPT interfaces.
+For specific examples, please refer to: https://coridm.d2d.ai/courses/32/supplement/784
+"""
 import coptpy as cp
 from coptpy import COPT
 import itertools

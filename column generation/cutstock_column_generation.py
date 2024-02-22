@@ -11,10 +11,10 @@ class CutStockCG:
         self.roll_length = 115
         # self.roll_size = [40, 55, 40, 70, 50, 70, 70, 30, 25, 30, 25, 20, 45, 20, 60, 30, 35, 30, 55, 50]
         # self.roll_demand = [42, 49, 16, 10, 37, 48, 10, 32, 35, 13, 14, 33, 20, 19, 47, 48, 14, 15, 20, 26]
-        self.roll_size = [25, 40, 50, 55, 70]
-        self.roll_demand = [50, 36, 24, 8, 30]
-        # self.roll_size = [40, 55, 40, 70, 50, 70, 70, 30, 25, 30]
-        # self.roll_demand = [42, 49, 16, 10, 37, 48, 10, 32, 35, 13]
+        # self.roll_size = [25, 40, 50, 55, 70]
+        # self.roll_demand = [50, 36, 24, 8, 30]
+        self.roll_size = [40, 55, 40, 70, 50, 70, 70, 30, 25, 30]
+        self.roll_demand = [42, 49, 16, 10, 37, 48, 10, 32, 35, 13]
         self.roll_kinds = len(self.roll_size)
         self.initial_patterns = self.roll_kinds
 
@@ -49,7 +49,7 @@ class CutStockCG:
             mipvars = mip_model.getVars()
             for var in mipvars:
                 if var.x > 1e-6:
-                    print("  {} = {}".format(var.name, var.x))
+                    print("  {0} = {1}".format(var.name, var.x))
 
     def main(self):
         self.env = cp.Envr()
@@ -106,8 +106,8 @@ class CutStockCG:
             # Get the dual values of constraints
             price = self.master_model.getInfo(COPT.Info.Dual, self.cons_demand_master)
 
-            for i in price:
-                print("price[{0}] = {1}".format(i, price[i]))
+            for ele in price:
+                print("price[{0}] = {1}".format(ele, price[ele]))
 
             # Update objective function of SUB model
             self.sub_model.setObjective(1 - self.variable_use_sub.prod(price), COPT.MINIMIZE)
@@ -133,7 +133,7 @@ class CutStockCG:
 
         # At last, we need to solve a MIP to get the Optimal solution
         allvars = self.master_model.getVars()
-        self.master_model.setVarType(self.variables_x_master, COPT.INTEGER)
+        self.master_model.setVarType(allvars, COPT.INTEGER)
         self.master_model.write("master problem mip.lp")
 
         # Solve the MIP model and report solution
