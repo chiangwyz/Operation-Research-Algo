@@ -3,14 +3,15 @@ This is a COPT learning document, not for commercial use. It is mainly for recor
 For specific examples, please refer to: https://coridm.d2d.ai/courses/32/supplement/784
 """
 
-from coptpy import *
+import coptpy as cp
+from coptpy import COPT
 
 # Create environment
-env = Envr()
+env = cp.Envr()
 model = env.createModel(name="diet_improved")
 
 # Read model
-model.read("diet_advanced.mps")
+model.read("diet_advanced.lp")
 
 # model.setLogFile("diet1.log")
 model.solve()
@@ -30,8 +31,8 @@ get info by model
 
 # obtain original LB/UB
 allvars = model.getVars()
-print("原来的变量下界：", model.getInfo("LB", allvars))
-print("原来的变量上界：", model.getInfo("UB", allvars))
+print("原来的变量下界：", model.getInfo(COPT.Info.LB, allvars))
+print("原来的变量上界：", model.getInfo(COPT.Info.UB, allvars))
 
 # Set constriant name and Obtain original bound
 allconstrs = model.getConstrs()
@@ -45,11 +46,11 @@ get info by vars or constrs
 """
 
 for var in allvars:
-    print("原来的变量下界：", var.getInfo("LB"))
-    print("原来的变量上界：", var.getInfo("UB"))
+    print("原来的变量下界：", var.getInfo(COPT.Info.LB))
+    print("原来的变量上界：", var.getInfo(COPT.Info.UB))
 for constr in allconstrs:
-    print("原来的约束下界：", constr.getInfo("LB"))
-    print("原来的约束上界：", constr.getInfo("UB"))
+    print("原来的约束下界：", constr.getInfo(COPT.Info.LB))
+    print("原来的约束上界：", constr.getInfo(COPT.Info.UB))
 
 # save the basis of original variables and constraints
 varbasis = model.getVarBasis()
@@ -60,17 +61,17 @@ for var, var_ba in zip(allvars, varbasis):
     print("决策变量：{0}，最优值：{1:4f}，基状态为：{2}".format(var.name, var.x, var_ba))
 
 # change lower bound to 2
-model.setInfo("LB", allvars, 2)
+model.setInfo(COPT.Info.UB, allvars, 2)
 # change upper bound to 15
-model.setInfo("UB", allvars, 15)
+model.setInfo(COPT.Info.UB, allvars, 15)
 
 # Set new Bound of Vitamin_A and Vitamin_C
-# constr_A = model.getConstrByName("R(Vitamin_A)")
-# model.setInfo("LB", constr_A, 1000)
-# model.setInfo("UB", constr_A, 20000)
-# constr_C = model.getConstrByName("R(Vitamin_C)")
-# model.setInfo("LB", constr_C, 1000)
-# model.setInfo("UB", constr_C, 20000)
+constr_A = model.getConstrByName("Vitamin_A")
+model.setInfo(COPT.Info.LB, constr_A, 1000)
+model.setInfo(COPT.Info.UB, constr_A, 20000)
+constr_C = model.getConstrByName("Vitamin_C")
+model.setInfo(COPT.Info.LB, constr_C, 1000)
+model.setInfo(COPT.Info.UB, constr_C, 20000)
 
 model.setBasis(varbasis, conbasis)
 model.solve()

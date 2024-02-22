@@ -3,23 +3,24 @@ This is a COPT learning document, not for commercial use. It is mainly for recor
 For specific examples, please refer to: https://coridm.d2d.ai/courses/32/supplement/782
 """
 
-from coptpy import *
+import coptpy as cp
+from coptpy import COPT
 
 # Create environment
-env = Envr()
+env = cp.Envr()
 
 # Create model
 model = env.createModel(name="diet_advanced")
 
 # Constraints info. of nutrition
-nutrition, minNutrition, maxNutrition = multidict({
+nutrition, minNutrition, maxNutrition = cp.multidict({
     'Vitamin A': [700, 10000],
     'Vitamin C': [700, 10000],
     'Vitamin B1': [700, 10000],
     'Vitamin B2': [700, 10000]})
 
 # Cost info. of foods (obj coef)
-foods, cost = multidict({
+foods, cost = cp.multidict({
     'BEEF': 3.19,
     'CHK': 2.59,
     'FISH': 2.29,
@@ -81,14 +82,14 @@ print("模型中决策变量的数量：", model.getAttr(attrname="Cols"))
 #                  <= maxNutrition[n] for n in nutrition)
 
 for n in nutrition:
-    model.addConstr(quicksum(nutritionValues[(f, n)] * buy[f] for f in foods), COPT.GREATER_EQUAL, minNutrition[n],
+    model.addConstr(cp.quicksum(nutritionValues[(f, n)] * buy[f] for f in foods), COPT.GREATER_EQUAL, minNutrition[n],
                     name=n+"_LB")
-    model.addConstr(quicksum(nutritionValues[(f, n)] * buy[f] for f in foods), COPT.LESS_EQUAL, maxNutrition[n],
+    model.addConstr(cp.quicksum(nutritionValues[(f, n)] * buy[f] for f in foods), COPT.LESS_EQUAL, maxNutrition[n],
                     name=n+"_UB")
 print("约束数量：", model.getAttr(attrname="rows"))
 
 # Set Objective--quicksum()
-model.setObjective(quicksum(cost[f] * buy[f] for f in foods), sense=COPT.MINIMIZE)
+model.setObjective(cp.quicksum(cost[f] * buy[f] for f in foods), sense=COPT.MINIMIZE)
 
 # solve the problem
 model.solve()
@@ -115,8 +116,8 @@ allduals = model.getDuals()
 for (constr, dual, slack) in zip(constr_list, allduals, allslacks):
     print("约束{0}，对偶变量的值{1:.4f}，松弛变量的值{1:.4f}".format(constr.getName(), dual, slack))
 
-model.write("diet_advanced.mps")
-model.write("diet_advanced.bas")
-model.write("diet_advanced.sol")
-model.write("diet_advanced.par")
-model.write("diet_advanced.lp")
+# model.write("diet_advanced.mps")
+# model.write("diet_advanced.bas")
+# model.write("diet_advanced.sol")
+# model.write("diet_advanced.par")
+# model.write("diet_advanced.lp")
