@@ -15,15 +15,15 @@ class MCTP_DW:
         self.number_destinations = 0
         self.number_products = 0
         self.origins_supply = []
-        self.demand_dest = []
+        self.destinations_demand = []
         self.capacity_arc = []
         self.travel_cost = []
 
         # initialize COPT environment, variables and constraints
         self.coptenv = cp.Envr()
-        self.cmulti = []
-        self.vtrans = []
-        self.vweight = []
+        self.cons_multi_master = []
+        self.variable_transport_sub = []
+        self.variable_lambda_master = []
 
         # initialize parameters
         self.iter = 0
@@ -53,7 +53,7 @@ class MCTP_DW:
         for j in range(self.number_destinations):
             column = lines[current_line].split()
             tmp_demand = [float(column[k]) for k in range(self.number_products)]
-            self.demand_dest.append(tmp_demand)
+            self.destinations_demand.append(tmp_demand)
             current_line += 1
 
         for i in range(self.number_origins):
@@ -80,7 +80,7 @@ class MCTP_DW:
         for i, supply in enumerate(self.origins_supply):
             print(f"Origin {i + 1}: {supply}")
         print("\nDemand:")
-        for j, demand in enumerate(self.demand_dest):
+        for j, demand in enumerate(self.destinations_demand):
             print(f"Destination {j + 1}: {demand}")
         print("\nLimits:")
         for i, limit in enumerate(self.capacity_arc):
@@ -107,7 +107,7 @@ class MCTP_DW:
                 tmp_con = []
                 for j in range(self.number_destinations):
                     tmp_con.append(self.master_model.addConstr(-self.rmp_tmp_var <= self.capacity_arc[i][j]))
-                self.cmulti.append(tmp_con)
+                self.cons_multi_master.append(tmp_con)
 
             # tricky approach to add temporary constraint 'convex' for master problem
             self.cconvex = self.master_model.addConstr(1e-6 * self.rmp_tmp_var == 1.0)
@@ -123,19 +123,19 @@ class MCTP_DW:
                     for k in range(self.number_products):
                         ttmp_var.append(self.sub_model.addVar(lb=0.0, ub=COPT.INFINITY, obj=0.0, vtype= COPT.CONTINUOUS))
                     tmp_var.append(ttmp_var)
-                self.vtrans.append(tmp_var)
+                self.variable_transport_sub.append(tmp_var)
 
             # add supply constraint for subproblem
             for i in range(self.number_origins):
                 for k in range(self.number_products):
-                    self.sub_model.addConstr(cp.quicksum(self.vtrans[i][j][k] for j in range(self.number_destinations))
+                    self.sub_model.addConstr(cp.quicksum(self.variable_transport_sub[i][j][k] for j in range(self.number_destinations))
                                              == self.origins_supply[i][k])
 
             # add demand constraint for subproblem
             for j in range(self.number_destinations):
                 for k in range(self.number_products):
-                    self.sub_model.addConstr(cp.quicksum(self.vtrans[i][j][k] for i in range(self.number_origins))
-                                             == self.demand_dest[j][k])
+                    self.sub_model.addConstr(cp.quicksum(self.variable_transport_sub[i][j][k] for i in range(self.number_origins))
+                                             == self.destinations_demand[j][k])
 
         except cp.CoptError as e:
             print('Return code' + str(e.retcode) + ': ' + e.message)
@@ -149,7 +149,7 @@ class MCTP_DW:
             self.price.append(lprice)
 
         obj_masteri = self.rmp_tmp_var
-        obj_subi = -cp.quicksum(self.price[i][j] * self.vtrans[i][j][k] \
+        obj_subi = -cp.quicksum(self.price[i][j] * self.variable_transport_sub[i][j][k] \
                                    for i in range(self.number_origins) \
                                    for j in range(self.number_destinations) \
                                    for k in range(self.number_products)) - self.price_convex
@@ -179,7 +179,7 @@ class MCTP_DW:
                 self.iter += 1
 
                 # calculate parameters for master problem
-                sum_costxtrans = sum(self.travel_cost[i][j][k] * self.vtrans[i][j][k].x \
+                sum_costxtrans = sum(self.travel_cost[i][j][k] * self.variable_transport_sub[i][j][k].x \
                                      for i in range(self.number_origins) \
                                      for j in range(self.number_destinations) \
                                      for k in range(self.number_products))
@@ -190,12 +190,12 @@ class MCTP_DW:
                 col = cp.Column()
                 for i in range(self.number_origins):
                     for j in range(self.number_destinations):
-                        col.addTerms(self.cmulti[i][j], sum(self.vtrans[i][j][k].x for k in range(self.number_products)))
+                        col.addTerms(self.cons_multi_master[i][j], sum(self.variable_transport_sub[i][j][k].x for k in range(self.number_products)))
 
                 col.addTerms(self.cconvex, 1.0)
 
                 # add variable 'weight'
-                self.vweight.append(self.master_model.addVar(0.0, COPT.INFINITY, 0.0, COPT.CONTINUOUS, "", col))
+                self.variable_lambda_master.append(self.master_model.addVar(0.0, COPT.INFINITY, 0.0, COPT.CONTINUOUS, "", col))
 
                 # solve master problem in 'Phase I'
                 self.master_model.solve()
@@ -209,12 +209,12 @@ class MCTP_DW:
                 else:
                     for i in range(self.number_origins):
                         for j in range(self.number_destinations):
-                            self.price[i][j] = self.cmulti[i][j].pi
+                            self.price[i][j] = self.cons_multi_master[i][j].pi
 
                     self.price_convex = self.cconvex.pi
 
                 # reset objective for subproblem in 'Phase I'
-                obj_subi = -cp.quicksum(self.price[i][j] * self.vtrans[i][j][k] \
+                obj_subi = -cp.quicksum(self.price[i][j] * self.variable_transport_sub[i][j][k] \
                                            for i in range(self.number_origins) \
                                            for j in range(self.number_destinations) \
                                            for k in range(self.number_products)) - self.price_convex
@@ -227,7 +227,7 @@ class MCTP_DW:
         print("Setting up for Phase II...")
 
         # set objective for master problem in 'Phase II'
-        obj_masterii = cp.quicksum(self.propcost[i] * self.vweight[i] for i in range(len(self.propcost)))
+        obj_masterii = cp.quicksum(self.propcost[i] * self.variable_lambda_master[i] for i in range(len(self.propcost)))
 
         self.master_model.setObjective(obj_masterii, COPT.MINIMIZE)
 
@@ -241,12 +241,12 @@ class MCTP_DW:
         # update price
         for i in range(self.number_origins):
             for j in range(self.number_origins):
-                self.price[i][j] = self.cmulti[i][j].pi
+                self.price[i][j] = self.cons_multi_master[i][j].pi
 
         self.price_convex = self.cconvex.pi
 
         # set objective for subproblem in 'Phase II'
-        obj_subii = cp.quicksum((self.travel_cost[i][j][k] - self.price[i][j]) * self.vtrans[i][j][k] \
+        obj_subii = cp.quicksum((self.travel_cost[i][j][k] - self.price[i][j]) * self.variable_transport_sub[i][j][k] \
                                    for i in range(self.number_origins) \
                                    for j in range(self.number_destinations) \
                                    for k in range(self.number_products)) - self.price_convex
@@ -273,7 +273,7 @@ class MCTP_DW:
                 self.iter += 1
 
                 # calculate parameters for master problem
-                sum_costxtrans = sum(self.travel_cost[i][j][k] * self.vtrans[i][j][k].x \
+                sum_costxtrans = sum(self.travel_cost[i][j][k] * self.variable_transport_sub[i][j][k].x \
                                      for i in range(self.number_origins) \
                                      for j in range(self.number_destinations) \
                                      for k in range(self.number_products))
@@ -282,12 +282,12 @@ class MCTP_DW:
                 col = cp.Column()
                 for i in range(self.number_origins):
                     for j in range(self.number_destinations):
-                        col.addTerms(sum(self.vtrans[i][j][k].x for k in range(self.number_products)), self.cmulti[i][j])
+                        col.addTerms(sum(self.variable_transport_sub[i][j][k].x for k in range(self.number_products)), self.cons_multi_master[i][j])
 
                 col.addTerms(self.cconvex, 1.0)
 
                 # add variable 'weight'
-                self.vweight.append(
+                self.variable_lambda_master.append(
                     self.master_model.addVar(0.0, COPT.INFINITY, sum_costxtrans, COPT.CONTINUOUS, "", col))
 
                 # solve master problem in 'Phase II'
@@ -296,12 +296,12 @@ class MCTP_DW:
                 # update price
                 for i in range(self.number_origins):
                     for j in range(self.number_destinations):
-                        self.price[i][j] = self.cmulti[i][j].pi
+                        self.price[i][j] = self.cons_multi_master[i][j].pi
 
                 self.price_convex = self.cconvex.pi
 
                 # reset objective for subproblem in 'Phase II'
-                obj_subii = cp.quicksum((self.travel_cost[i][j][k] - self.price[i][j]) * self.vtrans[i][j][k] \
+                obj_subii = cp.quicksum((self.travel_cost[i][j][k] - self.price[i][j]) * self.variable_transport_sub[i][j][k] \
                                            for i in range(self.number_origins) \
                                            for j in range(self.number_destinations) \
                                            for k in range(self.number_products)) - self.price_convex
@@ -320,9 +320,9 @@ class MCTP_DW:
         # set objective for master problem in 'Phase III'
         for i in range(self.number_origins):
             for j in range(self.number_destinations):
-                optship[i][j] = self.capacity_arc[i][j] + self.rmp_tmp_var.x - self.cmulti[i][j].slack
+                optship[i][j] = self.capacity_arc[i][j] + self.rmp_tmp_var.x - self.cons_multi_master[i][j].slack
 
-        obj_masteriii = cp.quicksum(self.travel_cost[i][j][k] * self.vtrans[i][j][k] \
+        obj_masteriii = cp.quicksum(self.travel_cost[i][j][k] * self.variable_transport_sub[i][j][k] \
                                        for i in range(self.number_origins) \
                                        for j in range(self.number_destinations) \
                                        for k in range(self.number_products))
@@ -331,7 +331,7 @@ class MCTP_DW:
 
         for i in range(self.number_origins):
             for j in range(self.number_destinations):
-                self.sub_model.addConstr(cp.quicksum(self.vtrans[i][j][k] for k in range(self.number_products)) == optship[i][j])
+                self.sub_model.addConstr(cp.quicksum(self.variable_transport_sub[i][j][k] for k in range(self.number_products)) == optship[i][j])
 
         # solve master problem in 'Phase III'
         self.sub_model.solve()
@@ -359,8 +359,8 @@ class MCTP_DW:
         for i in range(self.number_origins):
             for j in range(self.number_destinations):
                 for k in range(self.number_products):
-                    if abs(self.vtrans[i][j][k].x) >= 1e-6:
-                        print("  trans[%d][%d][%d] = %12.6f" % (i, j, k, self.vtrans[i][j][k].x))
+                    if abs(self.variable_transport_sub[i][j][k].x) >= 1e-6:
+                        print("  trans[%d][%d][%d] = %12.6f" % (i, j, k, self.variable_transport_sub[i][j][k].x))
 
 
 if __name__ == "__main__":
