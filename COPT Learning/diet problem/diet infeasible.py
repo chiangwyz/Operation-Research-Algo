@@ -84,14 +84,39 @@ if model.status == COPT.INFEASIBLE:
     if model.hasIIS:
         allconstrs = model.getConstrs()
         allvars = model.getVars()
-        print("---"*7,"IIS result of Variables","---"*7)
+        print("---"*7,"不可行检测 result of Variables","---"*7)
         for var in allvars:
             if var.iislb or var.iisub:
                 print("{0}:{1}".format(var.name, "Lower Bound" if var.iislb else "Upper Bound"))
-        print("---"*7,"IIS result of Constraints","---"*7)
+
+        print("---"*7,"不可行检测 result of Constraints","---"*7)
         for constr in allconstrs:
                 if constr.iislb or constr.iisub:
                     print("{0}：{1}".format(constr.name, "Lower Bound" if constr.iislb else "Upper Bound"))
+
+# Compute feasibility relaxation if problem is infeasible
+if model.status == COPT.INFEASIBLE:
+    # Set feasibility relaxation mode
+    model.setParam(COPT.Param.FeasRelaxMode, 2)
+    # Compute feasibility relaxation
+    model.feasRelaxS(vrelax=True, crelax=True)
+    # Check if feasibility relaxation solution is available
+    if model.hasFeasRelaxSol:
+        # Print violations of variables and constraints
+        allconstrs = model.getConstrs()
+        allvars = model.getVars()
+        print("\n======================== FeasRelax result ========================")
+        for constr in allconstrs:
+            lowRelax = constr.RelaxLB
+            uppRelax = constr.RelaxUB
+            if lowRelax != 0.0 or uppRelax != 0.0:
+                print("约束条件 {0}: violation = ({1}, {2})".format(constr.name, lowRelax, uppRelax))
+        print("")
+        for var in allvars:
+            lowRelax = var.RelaxLB
+            uppRelax = var.RelaxUB
+            if lowRelax != 0.0 or uppRelax != 0.0:
+                print("变量范围 {0}: violation = ({1}, {2})".format(var.name, lowRelax, uppRelax))
 
 # 调整模型
 buy['HAM'].setInfo(COPT.Info.UB, 30)
