@@ -17,38 +17,37 @@ print(model.status == COPT.UNSTARTED)
 x = model.addVar(name="Beef")
 y = model.addVar(name="Chicken")
 z = model.addVar(name="Fish")
-print("决策变量x的名称：",x.getName())
-print("决策变量x的变量类型：",x.getType())
-print("决策变量个数：",model.getAttr("cols"))
+print("决策变量x的名称：", x.getName())
+print("决策变量x的变量类型：", x.getType())
+print("决策变量个数：", model.getAttr("cols"))
 
-#Add constraints：添加单边约束
+# Add constraints：添加单边约束
 # vitamin A
-model.addConstr(60*x + 8*y + 8*z >= 700)
+model.addConstr(60 * x + 8 * y + 8 * z >= 700)
 # Vitamin C
-model.addConstr(20*x + 0*y + 10*z >= 700)
+model.addConstr(20 * x + 0 * y + 10 * z >= 700)
 print("约束数量：", model.getAttr("rows"))
 
 # Set objective function
-model.setObjective(3.19*x + 2.59*y + 2.29*z, sense=COPT.MINIMIZE)
+model.setObjective(3.19 * x + 2.59 * y + 2.29 * z, sense=COPT.MINIMIZE)
 print("模型优化方向是：", model.ObjSense)
 
-#Solve the problem:set parameter
+# Solve the problem:set parameter
 model.setParam(COPT.Param.TimeLimit, 10.0)
 
-#Solve the model
+# Solve the model
 model.solve()
 
-#Analyze solution
+# Analyze solution
 if model.status == COPT.OPTIMAL:
     # Optimal objective value
     print("\n\n最优解与最优方案为:\n")
     print("最小食谱构建费用：{0:.4f}".format(model.objval))
     allvars = model.getVars()
-    #Variable value
+    # Variable value
     print("\nValue of each variable:\n")
     for var in allvars:
         print("决策变量{0},最优值为 {1:.4f}，基状态为：{2}".format(var.name, var.x, var.basis))
-
 
 #
 # model.write("diet_simple.mps")
