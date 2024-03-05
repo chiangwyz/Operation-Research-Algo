@@ -32,7 +32,7 @@ def solve_CSP_with_CG(parameter, RMP_model, quantity_pattern, pattern, branching
         dual_correction = dual_list[num_types:len(dual_list)]
         while True:
             # solve pricing sub-problem
-            reduced_cost, new_pattern = solve_subproblem(parameter, price_dual, dual_correction, branching_index,
+            reduced_cost, new_pattern = solve_sub_problem(parameter, price_dual, dual_correction, branching_index,
                                                          pattern)
             # check termination condition
             if len(new_pattern) == 0:
@@ -53,7 +53,7 @@ def solve_CSP_with_CG(parameter, RMP_model, quantity_pattern, pattern, branching
     return RMP_model, pattern
 
 
-def solve_subproblem(parameter, RMP_model, quantity_pattern, pattern, branching_index):
+def solve_sub_problem(parameter, RMP_model, quantity_pattern, pattern, branching_index):
     num_types = len(parameter.demand)
 
     reduced_cost = []

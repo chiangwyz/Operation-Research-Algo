@@ -32,7 +32,7 @@ class Data:
         logger.info('Width: {}'.format(self.Width))
         logger.info('Demand Sizes: {}'.format(self.customer_demand_sizes))
         logger.info('Demands: {}'.format(self.customer_demands))
-        logger.info('Demand Numbers: {}'.format(self.demands_numbers))
+        logger.info('Demand Numbers: {}'.format(self.customer_demand_numbers))
 
 
 if __name__ == '__main__':

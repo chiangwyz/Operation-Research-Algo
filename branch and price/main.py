@@ -16,6 +16,7 @@ if __name__ == "__main__":
     input_data = "data.txt"
     data = Data()
     data.read_data(input_data)
+    data.print_data()
 
     # initialize
     t1 = time.time()
@@ -38,7 +39,8 @@ if __name__ == "__main__":
 
     # set parameters
     rmp_model.setParam(COPT.Param.Logging, 1)
-    rmp_model.setParam(COPT.Attr.ObjSense, COPT.MINIMIZE)
+    rmp_model.setObjSense(COPT.MINIMIZE)
+    rmp_model.writeLp("master problem.lp")
 
     # root node
     temp_node = Node()
@@ -97,7 +99,7 @@ if __name__ == "__main__":
             # take the first node as parent node
             parent_node = heapq.heappop(bb_tree)
             # add left branch
-            temp_node = add_left_branch(parameter, parent_node, k)
+            temp_node = add_left_branch(data, parent_node, k)
             if temp_node.model.Status != 3:  # feasible solution
                 temp_node.obj_value = temp_node.model.ObjVal
                 temp_node.pattern_quantity = np.zeros(len(temp_node.model.getVars()))
@@ -106,7 +108,7 @@ if __name__ == "__main__":
                 heapq.heappush(bb_tree, temp_node)
 
             # add right branch
-            temp_node = add_right_branch(parameter, parent_node, k)
+            temp_node = add_right_branch(data, parent_node, k)
             if temp_node.model.Status != 3:  # feasible solution
                 temp_node.obj_value = temp_node.model.ObjVal
                 temp_node.pattern_quantity = np.zeros(len(temp_node.model.getVars()))
