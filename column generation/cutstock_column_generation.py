@@ -92,7 +92,7 @@ class CutStockCG:
         """
         self.variable_use_sub = self.sub_model.addVars(self.roll_kinds, vtype=COPT.INTEGER, nameprefix="vuse")
 
-        self.sub_model.addConstr(self.variable_use_sub.prod(self.roll_size_dict), COPT.LESS_EQUAL,self.roll_length, "width_limit")
+        self.sub_model.addConstr(self.variable_use_sub.prod(self.roll_size_dict), COPT.LESS_EQUAL, self.roll_length, "width_limit")
 
         # Main CG loop
         print("               *** Column Generation Loop ***               ")

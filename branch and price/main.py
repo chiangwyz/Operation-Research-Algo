@@ -52,13 +52,14 @@ if __name__ == "__main__":
     bb_tree[0].obj_value = bb_tree[0].model.ObjVal
     bb_tree[0].pattern_quantity = np.zeros(len(bb_tree[0].model.getVars()))
     for j in range(len(bb_tree[0].pattern_quantity)):
-        bb_tree[0].pattern_quantity[j] = bb_tree[0].model.getVars()[j].X
+        bb_tree[0].pattern_quantity[j] = bb_tree[0].model.getVars()[j].x
 
     print(f"{'Iteration':^10} {'LB':^10} {'LB_INT':^10} {'UB':^10} {'gap(%)':^10}")
     num_iterations = 1
     while True:
         if bb_tree[0].obj_value > solution.ub:
-            heapq.heappop(bb_tree)  # cut off by bound
+            # cut off by bound
+            heapq.heappop(bb_tree)
             continue
 
         # check integrity

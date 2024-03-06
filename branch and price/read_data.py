@@ -12,7 +12,7 @@ class Data:
         # 需求钢卷的数量
         self.customer_demands = []
 
-        # 需求钢卷的数量
+        # 需求钢卷的客户数量
         self.customer_demand_numbers = 0
 
     def read_data(self, data_path: str) -> None:
