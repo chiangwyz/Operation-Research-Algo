@@ -226,7 +226,6 @@ if __name__ == "__main__":
     else:
         print("Fail to get best TSP tour")
 
-    # draw_tours(data.nodeNum, edges, vars)
     print("\n***** TSP Callback Example Finished *****")
 
     # draw the route
