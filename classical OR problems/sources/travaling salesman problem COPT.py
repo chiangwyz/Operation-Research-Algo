@@ -5,7 +5,6 @@ author: Dapei JIANG
 Using COPT to solve a traveling salesman problem with c101.txt, refer COPT provided example.
 There are two ways to solve this problem, one with MTZ constraints, another with lazy constraints.
 We use VRP case c101 to generate the problem.
-
 """
 
 import re
