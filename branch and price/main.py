@@ -8,15 +8,19 @@ from solution import *
 from branching import *
 import heapq
 import time
-# from rounding import perform_simple_rounding, perform_diving_heuristic
+
+import color_logging
+from rounding import perform_simple_rounding, perform_diving_heuristic
 
 
 if __name__ == "__main__":
+    logger = LoggerFactory.get_colored_logger()
+
     # read in date
-    input_data = "data.txt"
+    input_data = "../branch and price/data.txt"
     data = Data()
     data.read_data(input_data)
-    data.print_data()
+    # data.print_data()
 
     # initialize
     t1 = time.time()
@@ -24,14 +28,17 @@ if __name__ == "__main__":
     solution = Solution()
 
     env = cp.Envr()
-    rmp_model = env.createModel("master problem")
+    rmp_model = env.createModel("restricted master problem")
 
     pattern = np.zeros((data.customer_demand_numbers, data.customer_demand_numbers), dtype=np.int32)
     for i in range(data.customer_demand_numbers):
         pattern[i][i] = np.floor(data.Width / data.customer_demands[i])
 
+        # logger.info("pattern{}{} = {}".format(i, i, pattern[i][i]))
+    logger.info("pattern=\n {}".format(pattern))
+
     # variables of RMP
-    y = rmp_model.addVars(data.customer_demand_numbers, obj=1, vtype=COPT.CONTINUOUS, nameprefix="x")
+    y = rmp_model.addVars(data.customer_demand_numbers, obj=1, vtype=COPT.CONTINUOUS, nameprefix="y")
     # constraints of RMP
     rmp_model.addConstrs(
         (cp.quicksum(pattern[i][j] * y[j] for j in range(data.customer_demand_numbers)) >= data.customer_demands[i]

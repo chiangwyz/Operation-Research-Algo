@@ -1,5 +1,6 @@
 from color_logging import LoggerFactory
 
+logger = LoggerFactory.get_colored_logger()
 
 class Data:
     def __init__(self):
@@ -27,8 +28,6 @@ class Data:
         self.customer_demand_numbers = len(self.customer_demands)
 
     def print_data(self) -> None:
-        logger = LoggerFactory.getColoredLogger()
-
         logger.info('Width: {}'.format(self.Width))
         logger.info('Demand Sizes: {}'.format(self.customer_demand_sizes))
         logger.info('Demands: {}'.format(self.customer_demands))

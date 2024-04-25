@@ -4,7 +4,7 @@ from colorlog import ColoredFormatter
 
 class LoggerFactory:
     @staticmethod
-    def getColoredLogger() -> logging.Logger:
+    def get_colored_logger() -> logging.Logger:
         """
         返回一个配置好的、带颜色的logger对象，其名称设置为调用该方法的模块名，并且在日志消息中包含行号。
         """
@@ -47,7 +47,7 @@ class LoggerFactory:
 
 if __name__ == '__main__':
     # 使用示例
-    logger = LoggerFactory.getColoredLogger()
+    logger = LoggerFactory.get_colored_logger()
 
     logger.debug('This is a debug message')
     logger.info('This is an info message')
