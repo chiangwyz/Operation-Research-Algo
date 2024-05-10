@@ -45,6 +45,8 @@ class LoggerFactory:
         return logger
 
 
+
+
 if __name__ == '__main__':
     # 使用示例
     logger = LoggerFactory.get_colored_logger()

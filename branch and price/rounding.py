@@ -22,13 +22,13 @@ def solve_sub_problem_embed_in_diving_heuristic(data, price_dual):
     sub_model = env.createModel("sub problem")
 
     # variables of subproblem
-    quantity = sub_model.addVars(data.customer_demand_numbers, vtype=COPT.INTEGER)
+    quantity = sub_model.addVars(data.Customer_numbers, vtype=COPT.INTEGER)
 
     # adding objective function
-    sub_model.setObjective(cp.quicksum(price_dual[i] * quantity[i] for i in range(data.customer_demand_numbers)), COPT.MAXIMIZE)
+    sub_model.setObjective(cp.quicksum(price_dual[i] * quantity[i] for i in range(data.Customer_numbers)), COPT.MAXIMIZE)
 
     # constraint of subproblem
-    sub_model.addConstr(cp.quicksum(quantity[i]*data.customer_demand_sizes[i] for i in range(data.customer_demand_numbers)) <= data.Width, name='capacity constraint')
+    sub_model.addConstr(cp.quicksum(quantity[i]*data.customer_demand_sizes[i] for i in range(data.Customer_numbers)) <= data.Width, name='capacity constraint')
 
     # solve Subproblem
     sub_model.setParam(COPT.Param.Logging, 1)

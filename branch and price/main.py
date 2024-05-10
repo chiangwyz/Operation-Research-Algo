@@ -1,5 +1,5 @@
 """
-reference from 运小筹
+author: Jiang Dapei
 """
 
 import numpy as np
@@ -14,13 +14,11 @@ from rounding import perform_simple_rounding, perform_diving_heuristic
 
 
 if __name__ == "__main__":
-    logger = LoggerFactory.get_colored_logger()
-
     # read in date
     input_data = "../branch and price/data.txt"
     data = Data()
     data.read_data(input_data)
-    # data.print_data()
+    data.print_data()
 
     # initialize
     t1 = time.time()
@@ -30,19 +28,19 @@ if __name__ == "__main__":
     env = cp.Envr()
     rmp_model = env.createModel("restricted master problem")
 
-    pattern = np.zeros((data.customer_demand_numbers, data.customer_demand_numbers), dtype=np.int32)
-    for i in range(data.customer_demand_numbers):
-        pattern[i][i] = np.floor(data.Width / data.customer_demands[i])
+    pattern = np.zeros((data.Customer_numbers, data.Customer_numbers), dtype=np.int32)
+    for i in range(data.Customer_numbers):
+        pattern[i][i] = np.floor(data.Width / data.Customer_demand_sizes[i])
+        # logger.info("pattern({},{}) = {}".format(i, i, pattern[i][i]))
 
-        # logger.info("pattern{}{} = {}".format(i, i, pattern[i][i]))
     logger.info("pattern=\n {}".format(pattern))
 
     # variables of RMP
-    y = rmp_model.addVars(data.customer_demand_numbers, obj=1, vtype=COPT.CONTINUOUS, nameprefix="y")
+    y = rmp_model.addVars(data.Customer_numbers, lb=0.0, ub=COPT.INFINITY, obj=1, vtype=COPT.CONTINUOUS, nameprefix="y")
     # constraints of RMP
     rmp_model.addConstrs(
-        (cp.quicksum(pattern[i][j] * y[j] for j in range(data.customer_demand_numbers)) >= data.customer_demands[i]
-         for i in range(data.customer_demand_numbers)), nameprefix='demand satisfaction')
+        (cp.quicksum(pattern[i][j] * y[j] for j in range(data.Customer_numbers)) >= data.Customer_demands[i]
+         for i in range(data.Customer_numbers)), nameprefix='demand satisfaction')
 
     # set parameters
     rmp_model.setParam(COPT.Param.Logging, 1)
@@ -55,6 +53,7 @@ if __name__ == "__main__":
     temp_node.pattern = pattern
     heapq.heappush(bb_tree, temp_node)
 
+    # solve root noode
     bb_tree[0].model, bb_tree[0].pattern = solve_CSP_with_CG(data, bb_tree[0].model, bb_tree[0].model.getVars(), bb_tree[0].pattern, bb_tree[0].branching_indices)
     bb_tree[0].obj_value = bb_tree[0].model.ObjVal
     bb_tree[0].pattern_quantity = np.zeros(len(bb_tree[0].model.getVars()))

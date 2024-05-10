@@ -24,8 +24,7 @@ def add_left_branch(data, parent_node, branch_index) -> Node:
     temp_node.branching_indices = parent_node.branching_indices.copy()
     temp_node.branching_indices.append(branch_index)
 
-    # parent_node.model.update()
-    temp_node.model = parent_node.model.copy()
+    temp_node.model = parent_node.model.clone()
     variables = temp_node.model.getVars()
     temp_node.model.addConstr(variables[branch_index] <= np.floor(parent_node.pattern_quantity[branch_index]), name="branching constraint")
     temp_node.model, temp_node.pattern = solve_CSP_with_CG(data, temp_node.model, variables, temp_node.pattern, temp_node.branching_indices)
@@ -40,7 +39,7 @@ def add_right_branch(data, parent_node, branch_index) -> Node:
     temp_node.branching_indices.append(branch_index)
 
     # parent_node.model.update()
-    temp_node.model = parent_node.model.copy()
+    temp_node.model = parent_node.model.clone()
     variables = temp_node.model.getVars()
     temp_node.model.addConstr(variables[branch_index] >= np.ceil(parent_node.pattern_quantity[branch_index]), name="branching constraint")
     temp_node.model, temp_node.pattern = solve_CSP_with_CG(data, temp_node.model, variables, temp_node.pattern, temp_node.branching_indices)

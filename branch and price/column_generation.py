@@ -3,8 +3,11 @@ import coptpy as cp
 from coptpy import COPT
 from math import sqrt
 
+from color_logging import LoggerFactory
 from read_data import Data
 from algorithm_parameters import *
+
+logger = LoggerFactory.get_colored_logger()
 
 # map: num --> model status
 status_map = {
@@ -21,46 +24,62 @@ status_map = {
 }
 
 
-def solve_sub_problem(data, price_dual, dual_correction, branching_index, pattern_a):
-    reduced_cost = 0
-
+def solve_sub_problem(data, price_dual, dual_correction, branching_index: list, pattern_old):
     new_pattern = []
+
+    num_types = len(price_dual)
 
     # 构造子问题
     env = cp.Envr()
     sub_model = env.createModel("sub problem")
 
-    var_y = cp.tupledict()
-    for i in range(data.customer_demand_numbers):
-        var_y[i] = sub_model.addVar(lb=0, ub=COPT.INFINITY, vtype=COPT.INTEGER, name='y_' + str(i))
+    var_a = cp.tupledict()
+    for i in range(data.Customer_numbers):
+        var_a[i] = sub_model.addVar(lb=0, ub=COPT.INFINITY, vtype=COPT.INTEGER, name='a({})'.format(i))
+    # var_y = sub_model.addVars(num_types, vtype=COPT.INTEGER)
 
     # 背包约束
-    sub_model.addConstr(var_y.prod(data.customer_demand_sizes), COPT.LESS_EQUAL, data.Width, "width_limit")
+    # sub_model.addConstr(var_a.prod(data.Customer_demand_sizes), COPT.LESS_EQUAL, data.Width, "width_limit")
+    sub_model.addConstr(cp.quicksum(var_a[i] * data.Customer_demand_sizes[i] for i in range(num_types)),
+                        COPT.LESS_EQUAL, data.Width, name="width constraint")
 
     # Update objective function of SUB model
-    sub_model.setObjective(1 - var_y.prod(price_dual), COPT.MINIMIZE)
+    sub_model.setObjective(1 - cp.quicksum(price_dual[i] * var_a[i] for i in range(num_types)), COPT.MINIMIZE)
 
     sub_model.setParam(COPT.Param.Logging, 1)
-    sub_model.setParam(COPT.Param.PoolSols, pool_size)
-    solution_pool = sub_model.getPoolObjVal(pool_size)
+    # sub_model.setParam(COPT.Attr.PoolSols, pool_size)
+    # solution_pool = sub_model.getPoolObjVal(pool_size)
 
     sub_model.solve()
+    sub_model.writeLp("sub_problem.lp")
+
+    for var in sub_model.getVars():
+        logger.info("{} = {}".format(var.name, var.x))
+
+    reduced_cost = 0
+
+    logger.info('sub_model.hasmipsol: {}'.format(sub_model.hasmipsol))
+    logger.info('sub_model.haslpsol: {}'.format(sub_model.haslpsol))
+    logger.info('sub_model.status: {}'.format(sub_model.status))
+    logger.info('sub_model.poolsols: {}'.format(sub_model.getAttr("poolsols")))
+    logger.info('sub_model.PoolSols: {}'.format(sub_model.getAttr(COPT.Attr.PoolSols)))
+    print("poolsols =", sub_model.getAttr('poolsols'))
+    print("COPT.Attr.PoolSols =", sub_model.getAttr(COPT.Attr.PoolSols))
 
     pattern = []
-    print("stored solutions: {}".format(len(COPT.Info.PoolSols)))
-    # check each found solutions
-    for i in range(sub_model.getInfo(COPT.Info.PoolSols)):
-        # SP_model.Params.SolutionNumber = i
-        candidate_pattern = np.array(sub_model.getAttr("Cols"), dtype=np.int32)
-        print(f"{i + 1}. best solution with objective value of {sub_model.getPoolObjVal(i)}")
-        print(f"candidate pattern: {candidate_pattern}")
+    for i in range(sub_model.getAttr('PoolSols')):
+        candidate_pattern = np.array(sub_model.getPoolSolution(i, var_a), dtype=np.int32)
+
+        logger.info("{}. best solution with objective value of {}".format(i+1, sub_model.getPoolObjVal(i)))
+        logger.info("candidate pattern: {}".format(candidate_pattern))
         reduced_cost = sub_model.getPoolObjVal(i)
-        print(f"reduced cost: {reduced_cost}")
+        logger.info("reduced_cost: {}".format(reduced_cost))
         if reduced_cost >= 0 or abs(reduced_cost) <= TOL:
             print("no more profitable pattern available")
             break
+
         # check if the pattern is already generated
-        identical_pattern_index = np.where(np.all(pattern_a.T == candidate_pattern, axis=1))[0]
+        identical_pattern_index = np.where(np.all(pattern_old.T == candidate_pattern, axis=1))[0]
         if len(identical_pattern_index) > 0:  # candidate pattern is already generated
             print("!!!candidate pattern is already generated!!!")
             print(f"identical with pattern {identical_pattern_index[0]}")
@@ -76,16 +95,23 @@ def solve_sub_problem(data, price_dual, dual_correction, branching_index, patter
     return reduced_cost, new_pattern
 
 
-def solve_CSP_with_CG(data: Data, RMP_model: cp.Model, quantity_pattern, pattern, branching_index):
-    num_types = data.customer_demand_numbers
+def solve_CSP_with_CG(data: Data, RMP_model: cp.Model, quantity_pattern, pattern, branching_index: list):
+    # 只做列生成并求解。
+    num_types = data.Customer_numbers
     # main steps
 
     RMP_model.solveLP()  # 求解LP
+    logger.info("RMP_model status: {}".format(status_map[RMP_model.status]))
+
     if RMP_model.status != COPT.INFEASIBLE:
         # Get the dual values of constraints
         dual_list = RMP_model.getInfo(COPT.Info.Dual, RMP_model.getConstrs())
-        price_dual = dual_list[0:num_types]
-        dual_correction = dual_list[num_types:len(dual_list)]
+        price_dual = dual_list[0:num_types]  # 获取前 num_types 个约束的对偶值
+        dual_correction = dual_list[num_types:len(dual_list)]  # 获取 添加的分支约束的对偶值
+
+        logger.info("dual dual: {}".format(price_dual))
+        logger.info("dual correction: {}".format(dual_correction))
+
         while True:
             # solve pricing sub-problem
             reduced_cost, new_pattern = solve_sub_problem(data, price_dual, dual_correction, branching_index, pattern)
@@ -107,5 +133,3 @@ def solve_CSP_with_CG(data: Data, RMP_model: cp.Model, quantity_pattern, pattern
             dual_correction = dual_list[num_types:len(dual_list)]
 
     return RMP_model, pattern
-
-
