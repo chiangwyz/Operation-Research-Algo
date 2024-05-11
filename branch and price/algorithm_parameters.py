@@ -1,4 +1,6 @@
 TOL = 1e-8
-pool_size = 5
-gap_tol = 0.0001
-rounding_opt = 0
+POOL_SIZE = 5
+GAP_TOL = 0.0001
+ROUNDING_OPT = 0
+DOWN_THRESHOLD = 0.2
+UP_THRESHOLD = 0.8

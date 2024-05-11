@@ -1,11 +1,7 @@
 import numpy as np
-import coptpy as cp
-from coptpy import COPT
+import gurobipy as grbpy
+from gurobipy import GRB
 from algorithm_parameters import *
-
-
-down_threshold = 0.2
-up_threshold = 0.8
 
 
 def perform_simple_rounding(rel_sol):
@@ -18,67 +14,56 @@ def perform_simple_rounding(rel_sol):
 def solve_sub_problem_embed_in_diving_heuristic(data, price_dual):
     # initialization of SP
 
-    env = cp.Envr()
-    sub_model = env.createModel("sub problem")
+    sub_model = grbpy.Model("sub problem")
 
-    # variables of subproblem
-    quantity = sub_model.addVars(data.Customer_numbers, vtype=COPT.INTEGER)
+    quantity = sub_model.addVars(data.Customer_numbers, vtype=GRB.INTEGER)
 
-    # adding objective function
-    sub_model.setObjective(cp.quicksum(price_dual[i] * quantity[i] for i in range(data.Customer_numbers)), COPT.MAXIMIZE)
+    sub_model.setObjective(grbpy.quicksum(price_dual[i] * quantity[i] for i in range(data.Customer_numbers)), GRB.MAXIMIZE)
 
-    # constraint of subproblem
-    sub_model.addConstr(cp.quicksum(quantity[i]*data.customer_demand_sizes[i] for i in range(data.Customer_numbers)) <= data.Width, name='capacity constraint')
+    sub_model.addConstr(grbpy.quicksum(quantity[i]*data.customer_demand_sizes[i] for i in range(data.Customer_numbers)) <= data.Width, name='capacity constraint')
 
-    # solve Subproblem
-    sub_model.setParam(COPT.Param.Logging, 1)
-    sub_model.solve()
-    reduced_cost = 1-sub_model.objval
+    sub_model.setParam(GRB.Param.Logging, 1)
+    sub_model.optimize()
+    reduced_cost = 1 - sub_model.objVal
 
-    # get the new pattern
-    new_pattern = np.array(sub_model.getAttr("Cols"), dtype=np.int32)
+    new_pattern = np.array(sub_model.getAttr(GRB.Attr.X, sub_model.getVars()), dtype=np.int32)
 
     return reduced_cost, new_pattern
 
 
 def solve_CSP_with_CG_embed_in_diving_heuristic(data, pattern_matrix, residual_demand):
-    # initialize
     num_patterns = np.shape(pattern_matrix)[1]
 
     # create RMP
-    env = cp.Envr()
-    RMP_model = env.createModel("Restricted problem")
+    RMP_model = grbpy.Model("Restricted Master Problem")
 
     # variables of RMP
-    quantity_pattern = RMP_model.addVars(num_patterns, obj=1, vtype=COPT.CONTINUOUS)
+    quantity_pattern = RMP_model.addVars(num_patterns, obj=1, vtype=GRB.CONTINUOUS)
 
     # constraints of RMP (demand satisfaction)
-    RMP_model.addConstrs((cp.quicksum(pattern_matrix[i][j] * quantity_pattern[j] for j in range(num_patterns)) >=
-                          residual_demand[i] for i in range(data.num_types)), nameprefix='demand satisfaction')
+    RMP_model.addConstrs((grbpy.quicksum(pattern_matrix[i][j] * quantity_pattern[j] for j in range(num_patterns)) >=
+                          residual_demand[i] for i in range(data.num_types)), name='demand satisfaction')
 
-    RMP_model.setParam(COPT.Param.Logging, 1)
-    RMP_model.setObjSense(COPT.MINIMIZE)
+    RMP_model.setParam(GRB.Param.Logging, 1)
+    RMP_model.setObjSense(GRB.MINIMIZE)
 
     # main steps
     while True:
         # solve RMP
-        RMP_model.solve()
+        RMP_model.optimize()
 
-        # get the dual variable value
-        price_dual = RMP_model.getInfo(COPT.Info.Dual, RMP_model.getConstrs())
+        price_dual = RMP_model.getAttr(GRB.Attr.Pi, RMP_model.getConstrs())
 
-        # solve pricing subproblem
         reduced_cost, new_pattern = solve_sub_problem_embed_in_diving_heuristic(data, price_dual)
 
-        # check termination condition
         if np.abs(reduced_cost) <= TOL or reduced_cost >= 0:
             break
 
         # set the new pattern as a new column in the coefficient matrix
-        new_column = cp.Column(RMP_model.getConstrs(), new_pattern)
+        new_column = grbpy.Column(new_pattern, RMP_model.getConstrs())
 
         # add the new variable
-        quantity_pattern[num_patterns] = RMP_model.addVar(obj=1.0, vtype=COPT.CONTINUOUS, column=new_column)
+        quantity_pattern[num_patterns] = RMP_model.addVar(obj=1.0, vtype=GRB.CONTINUOUS, column=new_column)
         pattern_matrix = np.c_[pattern_matrix, new_pattern]
         num_patterns += 1
 
@@ -103,11 +88,11 @@ def perform_diving_heuristic(rel_sol, data, pattern):
         num_rounded = 0
         for j in range(num_patterns):
             # round down
-            if rel_sol[j] - np.floor(rel_sol[j]) <= down_threshold:
+            if rel_sol[j] - np.floor(rel_sol[j]) <= DOWN_THRESHOLD:
                 rounded_sol[j] += np.floor(rel_sol[j])
                 num_rounded += 1
             # round up
-            elif rel_sol[j] - np.floor(rel_sol[j]) >= up_threshold:
+            elif rel_sol[j] - np.floor(rel_sol[j]) >= UP_THRESHOLD:
                 rounded_sol[j] += np.ceil(rel_sol[j])
                 num_rounded += 1
 

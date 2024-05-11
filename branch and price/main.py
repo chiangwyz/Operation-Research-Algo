@@ -25,8 +25,7 @@ if __name__ == "__main__":
     bb_tree = []
     solution = Solution()
 
-    env = cp.Envr()
-    rmp_model = env.createModel("restricted master problem")
+    rmp_model = grbpy.Model("Restricted Master problem")
 
     pattern = np.zeros((data.Customer_numbers, data.Customer_numbers), dtype=np.int32)
     for i in range(data.Customer_numbers):
@@ -36,16 +35,16 @@ if __name__ == "__main__":
     logger.info("pattern=\n {}".format(pattern))
 
     # variables of RMP
-    y = rmp_model.addVars(data.Customer_numbers, lb=0.0, ub=COPT.INFINITY, obj=1, vtype=COPT.CONTINUOUS, nameprefix="y")
+    y = rmp_model.addVars(data.Customer_numbers, lb=0.0, ub=GRB.INFINITY, obj=1.0, vtype=GRB.CONTINUOUS, name="y")
     # constraints of RMP
     rmp_model.addConstrs(
-        (cp.quicksum(pattern[i][j] * y[j] for j in range(data.Customer_numbers)) >= data.Customer_demands[i]
-         for i in range(data.Customer_numbers)), nameprefix='demand satisfaction')
+        (grbpy.quicksum(pattern[i][j] * y[j] for j in range(data.Customer_numbers)) >= data.Customer_demands[i]
+         for i in range(data.Customer_numbers)), name='demand satisfaction')
 
     # set parameters
-    rmp_model.setParam(COPT.Param.Logging, 1)
-    rmp_model.setObjSense(COPT.MINIMIZE)
-    rmp_model.writeLp("master problem.lp")
+    rmp_model.setParam(GRB.Param.OutputFlag, 1)
+    rmp_model.setAttr(GRB.Attr.ModelSense, GRB.MINIMIZE)
+    rmp_model.write("master problem.lp")
 
     # root node
     temp_node = Node()
@@ -84,7 +83,7 @@ if __name__ == "__main__":
         # case of fractional solution
         else:
             # perform rounding heuristic (store in solution.incumbent)
-            if rounding_opt == 0:
+            if ROUNDING_OPT == 0:
                 rounded_sol = perform_simple_rounding(bb_tree[0].pattern_quantity)
                 if np.sum(rounded_sol) < solution.ub:
                     solution.ub = np.sum(rounded_sol)
@@ -92,7 +91,7 @@ if __name__ == "__main__":
                     solution.total_consumption = np.sum(rounded_sol)
                     solution.incumbent = rounded_sol
 
-            elif rounding_opt == 1:
+            elif ROUNDING_OPT == 1:
                 rounded_sol, pattern_r = perform_diving_heuristic(bb_tree[0].pattern_quantity, parameter, bb_tree[0].pattern)
                 if np.sum(rounded_sol) < solution.ub:
                     solution.ub = np.sum(rounded_sol)
@@ -143,7 +142,7 @@ if __name__ == "__main__":
             print(f"{num_iterations:^10} {np.round(solution.lb, 4):^10} {solution.int_lb:^10} {solution.ub:^10} {np.round(solution.gap * 100, 4):^10}")
 
         # termination criteria
-        if solution.gap <= gap_tol or len(bb_tree) == 0:
+        if solution.gap <= GAP_TOL or len(bb_tree) == 0:
             break
 
         num_iterations += 1

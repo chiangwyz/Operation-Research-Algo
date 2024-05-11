@@ -1,5 +1,5 @@
 import numpy as np
-import gurobipy as grb
+import gurobipy as grbpy
 from gurobipy import GRB
 from math import sqrt
 
@@ -37,23 +37,23 @@ def solve_sub_problem(data, price_dual, dual_correction, branching_index: list, 
     num_types = len(price_dual)
 
     # 构造子问题
-    sub_model = grb.Model("sub problem")
+    sub_model = grbpy.Model("sub problem")
 
-    var_a = grb.tupledict()
-    for i in range(data.Customer_numbers):
-        var_a[i] = sub_model.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='a({})'.format(i))
-    # var_y = sub_model.addVars(num_types, vtype=GRB.INTEGER)
+    # var_a = grbpy.tupledict()
+    # for i in range(data.Customer_numbers):
+    #     var_a[i] = sub_model.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='a({})'.format(i))
+    var_a = sub_model.addVars(num_types, vtype=GRB.INTEGER)
 
     # 背包约束
     # sub_model.addConstr(var_a.prod(data.Customer_demand_sizes), COPT.LESS_EQUAL, data.Width, "width_limit")
-    sub_model.addConstrs(grb.quicksum(var_a[i] * data.Customer_demand_sizes[i] for i in range(num_types)) <= data.Width, name="width constraint")
+    sub_model.addConstr(grbpy.quicksum(var_a[i] * data.Customer_demand_sizes[i] for i in range(num_types)) <= data.Width, name="width constraint")
 
     # Update objective function of SUB model
-    sub_model.setObjective(1 - grb.quicksum(price_dual[i] * var_a[i] for i in range(num_types)), GRB.MINIMIZE)
+    sub_model.setObjective(1 - grbpy.quicksum(price_dual[i] * var_a[i] for i in range(num_types)), GRB.MINIMIZE)
 
     sub_model.setParam(GRB.Param.OutputFlag, 1)
     sub_model.setParam(GRB.Param.PoolSearchMode, 2)
-    sub_model.setParam(GRB.Param.PoolSolutions, pool_size)
+    sub_model.setParam(GRB.Param.PoolSolutions, POOL_SIZE)
 
     sub_model.optimize()
     sub_model.write("sub_problem.lp")
@@ -95,7 +95,7 @@ def solve_sub_problem(data, price_dual, dual_correction, branching_index: list, 
     return reduced_cost, new_pattern
 
 
-def solve_CSP_with_CG(data: Data, RMP_model: grb.Model, quantity_pattern, pattern, branching_index: list):
+def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern, pattern, branching_index: list):
     # 只做列生成并求解。
     num_types = data.Customer_numbers
     # main steps
@@ -120,14 +120,13 @@ def solve_CSP_with_CG(data: Data, RMP_model: grb.Model, quantity_pattern, patter
                 break
             for p in new_pattern:
                 # set the new pattern as a new column in the coefficient matrix
-                new_column = grb.Column(p, RMP_model.getConstrs()[0:num_types])
+                new_column = grbpy.Column(p, RMP_model.getConstrs()[0:num_types])
                 # add the new variable
                 quantity_pattern.append(
                     RMP_model.addVar(obj=1.0, vtype=GRB.CONTINUOUS, column=new_column, name="add pattern" + str(p)))
                 pattern = np.c_[pattern, p]
             # solve RMP
             RMP_model.optimize()
-
 
             # get dual
             dual_list = RMP_model.getAttr(GRB.Attr.Pi, RMP_model.getConstrs())
