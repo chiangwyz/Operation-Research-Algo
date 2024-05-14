@@ -2,7 +2,7 @@ import numpy as np
 import gurobipy as grbpy
 from gurobipy import GRB
 from algorithm_parameters import *
-
+from logger_config import logger
 
 def perform_simple_rounding(rel_sol):
     # 对给定的解进行简单的向上取整

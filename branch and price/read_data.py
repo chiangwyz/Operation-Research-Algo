@@ -1,7 +1,5 @@
 import numpy as np
-from color_logging import LoggerFactory
-
-logger = LoggerFactory.get_colored_logger()
+from logger_config import logger
 
 
 class Data:
@@ -30,6 +28,8 @@ class Data:
         self.Customer_demands = np.array(list(map(int, lines[5].split(', '))))
 
         self.Customer_numbers = len(self.Customer_demands)
+
+        logger.info("read data successfully!")
 
     def print_data(self) -> None:
         logger.info('Width: {}'.format(self.Width))

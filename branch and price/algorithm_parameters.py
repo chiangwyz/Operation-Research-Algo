@@ -4,3 +4,25 @@ GAP_TOL = 0.0001
 ROUNDING_OPT = 0
 DOWN_THRESHOLD = 0.2
 UP_THRESHOLD = 0.8
+
+# map: num --> model status
+GUROBI_Status_Map = {
+    1: "GRB.LOADED",
+    2: "GRB.OPTIMAL",
+    3: "GRB.INFEASIBLE",
+    4: "GRB.INF_OR_UNBD",
+    5: "GRB.UNBOUNDED",
+    6: "GRB.CUTOFF",
+    7: "GRB.ITERATION_LIMIT",
+    8: "GRB.NODE_LIMIT",
+    9: "GRB.TIME_LIMIT",
+    10: "GRB.SOLUTION_LIMIT",
+    11: "GRB.INTERRUPTED",
+    12: "GRB.NUMERIC",
+    13: "GRB.SUBOPTIMAL",
+    14: "GRB.INPROGRESS",
+    15: "GRB.USER_OBJ_LIMIT",
+    16: "GRB.WORK_LIMIT",
+    17: "GRB.MEM_LIMIT"
+}
+

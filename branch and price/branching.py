@@ -1,6 +1,6 @@
 import copy
 from column_generation import *
-
+from logger_config import logger
 
 class Node:
     def __init__(self):
@@ -8,7 +8,7 @@ class Node:
         self.model = None
         # 分支的变量下标
         self.branching_indices = []
-        # 切割模式
+        # 切割模式[][]
         self.pattern = None
         # 切割
         self.pattern_quantity = []

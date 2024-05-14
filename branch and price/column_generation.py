@@ -2,33 +2,11 @@ import numpy as np
 import gurobipy as grbpy
 from gurobipy import GRB
 from math import sqrt
+from logger_config import logger
 
-from color_logging import LoggerFactory
 from read_data import Data
 from algorithm_parameters import *
 
-logger = LoggerFactory.get_colored_logger()
-
-# map: num --> model status
-status_map = {
-    1: "GRB.LOADED",
-    2: "GRB.OPTIMAL",
-    3: "GRB.INFEASIBLE",
-    4: "GRB.INF_OR_UNBD",
-    5: "GRB.UNBOUNDED",
-    6: "GRB.CUTOFF",
-    7: "GRB.ITERATION_LIMIT",
-    8: "GRB.NODE_LIMIT",
-    9: "GRB.TIME_LIMIT",
-    10: "GRB.SOLUTION_LIMIT",
-    11: "GRB.INTERRUPTED",
-    12: "GRB.NUMERIC",
-    13: "GRB.SUBOPTIMAL",
-    14: "GRB.INPROGRESS",
-    15: "GRB.USER_OBJ_LIMIT",
-    16: "GRB.WORK_LIMIT",
-    17: "GRB.MEM_LIMIT"
-}
 
 
 def solve_sub_problem(data, price_dual, dual_correction, branching_index: list, pattern_old):
@@ -59,10 +37,10 @@ def solve_sub_problem(data, price_dual, dual_correction, branching_index: list, 
     sub_model.write("sub_problem.lp")
 
     for var in sub_model.getVars():
-        logger.info("{} = {}".format(var.VarName, var.X))
+        logger.info("%s = %s", var.VarName, var.X)
 
     # 获取子问题求解状态
-    logger.info('sub_model.status: {}'.format(status_map[sub_model.Status]))
+    logger.info('sub_model.status: %s', GUROBI_Status_Map[sub_model.Status])
 
     reduced_cost = 0
     pattern = []
@@ -70,9 +48,9 @@ def solve_sub_problem(data, price_dual, dual_correction, branching_index: list, 
         candidate_pattern = np.array(sub_model.getAttr(GRB.Attr.Xn, sub_model.getVars()), dtype=np.int32)
         reduced_cost = sub_model.PoolObjVal
 
-        logger.info("{}. best solution with objective value of {}".format(i+i, sub_model.PoolObjVal))
-        logger.info("candidate pattern: {}".format(candidate_pattern))
-        logger.info("reduced_cost: {}".format(reduced_cost))
+        logger.info("%s. best solution with objective value of %s", i+i, sub_model.PoolObjVal)
+        logger.info("candidate pattern: %s", candidate_pattern)
+        logger.info("reduced_cost: %s", reduced_cost)
 
         if reduced_cost >= 0 or abs(reduced_cost) <= TOL:
             print("no more profitable pattern available")
@@ -95,13 +73,12 @@ def solve_sub_problem(data, price_dual, dual_correction, branching_index: list, 
     return reduced_cost, new_pattern
 
 
-def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern, pattern, branching_index: list):
+def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern: np.ndarray, pattern: np.ndarray, branching_index: list):
     # 只做列生成并求解。
     num_types = data.Customer_numbers
-    # main steps
 
     RMP_model.optimize()  # 求解LP
-    logger.info("RMP_model status: {}".format(status_map[RMP_model.status]))
+    logger.info("RMP_model status: %s", GUROBI_Status_Map[RMP_model.status])
 
     if RMP_model.status != GRB.INFEASIBLE:
         # Get the dual values of constraints
@@ -109,8 +86,8 @@ def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern, patt
         price_dual = dual_list[0:num_types]  # 获取前 num_types 个约束的对偶值
         dual_correction = dual_list[num_types:len(dual_list)]  # 获取 添加的分支约束的对偶值
 
-        logger.info("dual dual: {}".format(price_dual))
-        logger.info("dual correction: {}".format(dual_correction))
+        logger.info("dual dual: %s", price_dual)
+        logger.info("dual correction: %s", dual_correction)
 
         while True:
             # solve pricing sub-problem
