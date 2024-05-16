@@ -32,10 +32,8 @@ class Data:
         logger.info("read data successfully!")
 
     def print_data(self) -> None:
-        logger.info('Width: {}'.format(self.Width))
-        logger.info('Demand Sizes: {}'.format(self.Customer_demand_sizes))
-        logger.info('Demands: {}'.format(self.Customer_demands))
-        logger.info('Customer Numbers: {}'.format(self.Customer_numbers))
+        logger.info('Width: {}, Demand Sizes: {}, Demands: {}, Customer Numbers: {}'.format(self.Width, self.Customer_demand_sizes, self.Customer_demands, self.Customer_numbers))
+
 
 
 if __name__ == '__main__':

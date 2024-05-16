@@ -14,6 +14,7 @@ from rounding import perform_simple_rounding, perform_diving_heuristic
 
 
 if __name__ == "__main__":
+    logger.info("Starting Branch and Price Algorithm!")
     # 读取数据
     input_data = "../branch and price/data.txt"
     data = Data()
@@ -31,7 +32,7 @@ if __name__ == "__main__":
         pattern[i][i] = np.floor(data.Width / data.Customer_demand_sizes[i])
         # logger.info("pattern({},{}) = {}".format(i, i, pattern[i][i]))
 
-    logger.info("pattern= %s", pattern)
+    logger.info("initial pattern= %s", pattern)
 
     y = rmp_model.addVars(data.Customer_numbers, lb=0.0, ub=GRB.INFINITY, obj=1.0, vtype=GRB.CONTINUOUS, name="y")
 
@@ -43,6 +44,8 @@ if __name__ == "__main__":
     rmp_model.setParam(GRB.Param.OutputFlag, 1)
     rmp_model.setAttr(GRB.Attr.ModelSense, GRB.MINIMIZE)
     rmp_model.write("master problem.lp")
+
+    logger.info("finished root node model build!")
 
     # root node
     temp_node = Node()
@@ -159,3 +162,5 @@ if __name__ == "__main__":
     for j in range(len(solution.incumbent)):
         if solution.incumbent[j] > 0:
             print(f"pattern {j}:  {solution.pattern.T[j]} with quantity: {solution.incumbent[j]}")
+
+    logger.info("End Branch and Price Algorithm!")

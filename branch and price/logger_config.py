@@ -19,6 +19,7 @@ class CustomFormatter(logging.Formatter):
             s = "%s,%03d" % (s, record.msecs)
         return s
 
+
 class LoggerFactory:
     @staticmethod
     def get_colored_logger(log_name: str = "app.log") -> logging.Logger:
@@ -42,7 +43,7 @@ class LoggerFactory:
 
             # 创建一个文件Handler
             fh = CustomFileHandler(log_name)  # 使用自定义的文件处理器
-            fh.setLevel(logging.DEBUG)
+            fh.setLevel(logging.INFO)
 
             # 创建一个带颜色的formatter，包括文件名和行号
             formatter = ColoredFormatter(
