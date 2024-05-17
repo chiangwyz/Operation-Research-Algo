@@ -44,34 +44,37 @@ def solve_sub_problem(data, shadow_price, dual_correction, branching_index: list
 
     # 获取子问题求解状态
     logger.info('sub model status: %s', GUROBI_Status_Map[sub_model.Status])
+    logger.info('sub_model.SolCount: %s', sub_model.SolCount)
 
     reduced_cost = 0
     pattern = []
     for i in range(sub_model.SolCount):
+        # 需要设置获取的顺序
+        sub_model.setParam(GRB.Param.SolutionNumber, i)
         candidate_pattern = np.array(sub_model.getAttr(GRB.Attr.Xn, sub_model.getVars()), dtype=np.int32)
         reduced_cost = sub_model.PoolObjVal
 
-        logger.info("%s. best solution with objective value of %s", i + 1, sub_model.PoolObjVal)
+        logger.info("No %s. best solution with objective value of %s", i, sub_model.PoolObjVal)
         logger.info("candidate pattern: %s", candidate_pattern)
         logger.info("reduced cost: %s", reduced_cost)
 
         if reduced_cost >= 0 or abs(reduced_cost) <= TOL:
-            print("no more profitable pattern available")
+            logger.info("no more profitable pattern available")
             break
 
         # check if the pattern is already generated
         identical_pattern_index = np.where(np.all(pattern_old.T == candidate_pattern, axis=1))[0]
         if len(identical_pattern_index) > 0:  # candidate pattern is already generated
-            print("!!!candidate pattern is already generated!!!")
-            print(f"identical with pattern {identical_pattern_index[0]}")
+            logger.info("candidate pattern is already generated!!!")
+            logger.info("identical with pattern %s", identical_pattern_index[0])
             correction_indices = np.where(identical_pattern_index[0] == branching_index)[0]
             for j in correction_indices:
                 reduced_cost -= dual_correction[j]
-            print(f"corrected reduced cost: {reduced_cost}")
+            logger.info("corrected reduced cost: %s", reduced_cost)
         else:  # candidate pattern is new
             if reduced_cost < 0 and abs(reduced_cost) > TOL:
                 pattern.append(candidate_pattern)
-                print("This pattern is added.")
+                logger.info("The pattern is added.")
 
     logger.info("End of solving sub problem!")
     return reduced_cost, new_pattern
