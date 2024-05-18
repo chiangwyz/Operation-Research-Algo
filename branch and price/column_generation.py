@@ -9,7 +9,7 @@ from algorithm_parameters import *
 
 
 def solve_sub_problem(data, shadow_price, dual_correction, branching_index: list, pattern_old):
-    logger.info("Solving sub problem!")
+    logger.info("solve_sub_problem!")
     new_pattern = []
 
     num_types = len(shadow_price)
@@ -34,6 +34,7 @@ def solve_sub_problem(data, shadow_price, dual_correction, branching_index: list
     sub_model.setParam(GRB.Param.PoolSearchMode, 2)
     sub_model.setParam(GRB.Param.PoolSolutions, POOL_SIZE)
 
+    sub_model.update()
     sub_model.optimize()
     sub_model.write("sub_problem.lp")
 
@@ -43,11 +44,10 @@ def solve_sub_problem(data, shadow_price, dual_correction, branching_index: list
     logger.info(", ".join(output))
 
     # 获取子问题求解状态
-    logger.info('sub model status: %s', GUROBI_Status_Map[sub_model.Status])
+    logger.info('sub_model status: %s', GUROBI_Status_Map[sub_model.Status])
     logger.info('sub_model.SolCount: %s', sub_model.SolCount)
 
     reduced_cost = 0
-    pattern = []
     for i in range(sub_model.SolCount):
         # 需要设置获取的顺序
         sub_model.setParam(GRB.Param.SolutionNumber, i)
@@ -73,19 +73,21 @@ def solve_sub_problem(data, shadow_price, dual_correction, branching_index: list
             logger.info("corrected reduced cost: %s", reduced_cost)
         else:  # candidate pattern is new
             if reduced_cost < 0 and abs(reduced_cost) > TOL:
-                pattern.append(candidate_pattern)
+                new_pattern.append(candidate_pattern)
                 logger.info("The pattern is added.")
 
     logger.info("End of solving sub problem!")
     return reduced_cost, new_pattern
 
 
-def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern: np.ndarray, pattern: np.ndarray,
+def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern, pattern: np.ndarray,
                       branching_index: list):
-    # 只做列生成并求解。
+    # 只做列生成并求解
     num_types = data.Customer_numbers
 
+    RMP_model.update()
     RMP_model.optimize()  # 求解LP
+    # logger.info("RMP_model status: %s", RMP_model.status)
     logger.info("RMP_model status: %s", GUROBI_Status_Map[RMP_model.status])
 
     if RMP_model.status != GRB.INFEASIBLE:
@@ -102,15 +104,22 @@ def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern: np.n
             reduced_cost, new_pattern = solve_sub_problem(data, shadow_price, dual_correction, branching_index, pattern)
             # check termination condition
             if len(new_pattern) == 0:
+                logger.info("cannot found new pattern")
                 break
+
+            logger.info("new pattern:\n%s", np.array(new_pattern).T)
             for p in new_pattern:
+                logger.info("add new pattern: %s", p)
+
                 # set the new pattern as a new column in the coefficient matrix
                 new_column = grbpy.Column(p, RMP_model.getConstrs()[0:num_types])
                 # add the new variable
                 quantity_pattern.append(
                     RMP_model.addVar(obj=1.0, vtype=GRB.CONTINUOUS, column=new_column, name="add pattern" + str(p)))
                 pattern = np.c_[pattern, p]
+
             # solve RMP
+            RMP_model.update()
             RMP_model.optimize()
 
             # get dual

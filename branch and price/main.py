@@ -32,7 +32,7 @@ if __name__ == "__main__":
         pattern[i][i] = np.floor(data.Width / data.Customer_demand_sizes[i])
         # logger.info("pattern({},{}) = {}".format(i, i, pattern[i][i]))
 
-    logger.info("initial pattern= %s", pattern)
+    logger.info("initial pattern =\n%s", pattern)
 
     y = rmp_model.addVars(data.Customer_numbers, lb=0.0, ub=GRB.INFINITY, obj=1.0, vtype=GRB.CONTINUOUS, name="y")
 
@@ -56,20 +56,23 @@ if __name__ == "__main__":
     # solve root node
     bb_tree[0].model, bb_tree[0].pattern = solve_CSP_with_CG(data, bb_tree[0].model, bb_tree[0].model.getVars(), bb_tree[0].pattern, bb_tree[0].branching_indices)
     bb_tree[0].obj_value = bb_tree[0].model.ObjVal
-
-    logger.info("root node obj_value = %s", bb_tree[0].model.ObjVal)
-
     bb_tree[0].pattern_quantity = np.zeros(len(bb_tree[0].model.getVars()))
     for j in range(len(bb_tree[0].pattern_quantity)):
         bb_tree[0].pattern_quantity[j] = bb_tree[0].model.getVars()[j].x
 
-    logger.info("bb_tree[0].pattern_quantity = %s", bb_tree[0].pattern_quantity)
+    logger.info("root node obj_value = %s", bb_tree[0].model.ObjVal)
+    logger.info("bb_tree[0].pattern =\n%s", bb_tree[0].pattern)
+    logger.info("bb_tree[0].pattern_quantity =\n%s", bb_tree[0].pattern_quantity)
 
-    print(f"{'Iteration':^10} {'LB':^10} {'LB_INT':^10} {'UB':^10} {'gap(%)':^10}")
     num_iterations = 1
     while True:
+        logger.info("iterations = %s, obj of relaxation = %s", num_iterations, bb_tree[0].obj_value)
+        for j in range(len(bb_tree[0].pattern_quantity)):
+            logger.info("pattern %s: %s with quantity %s", j, bb_tree[0].pattern.T[j], bb_tree[0].pattern_quantity[j])
+
         if bb_tree[0].obj_value > solution.ub:
             # cut off by bound
+            logger.info("cut off by bound")
             heapq.heappop(bb_tree)
             continue
 
@@ -78,6 +81,7 @@ if __name__ == "__main__":
         fraction = np.abs(np.round(bb_tree[0].pattern_quantity) - bb_tree[0].pattern_quantity)
         # case of integral solution
         if fraction.sum() <= TOL:
+            logger.info("find an integral solution!")
             LP_opt_int = True
             # update ub and incumbent
             if bb_tree[0].obj_value < solution.ub:
@@ -85,6 +89,7 @@ if __name__ == "__main__":
                 solution.pattern = bb_tree[0].pattern
                 solution.total_consumption = bb_tree[0].obj_value
                 solution.incumbent = bb_tree[0].pattern_quantity
+                logger.info("solution incumbent = %s", solution.incumbent)
 
         # case of fractional solution
         else:
