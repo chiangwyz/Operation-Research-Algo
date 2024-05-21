@@ -35,7 +35,6 @@ class Data:
         logger.info('Width: {}, Demand Sizes: {}, Demands: {}, Customer Numbers: {}'.format(self.Width, self.Customer_demand_sizes, self.Customer_demands, self.Customer_numbers))
 
 
-
 if __name__ == '__main__':
     data = Data()
     data.read_data('data.txt')

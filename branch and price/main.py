@@ -39,7 +39,7 @@ if __name__ == "__main__":
     rmp_model.addConstrs(
         (grbpy.quicksum(pattern[i][j] * y[j] for j in range(data.Customer_numbers)) >= data.Customer_demands[i]
          for i in range(data.Customer_numbers)),
-        name='demand satisfaction')
+        name='demand_satisfaction')
 
     rmp_model.setParam(GRB.Param.OutputFlag, 1)
     rmp_model.setAttr(GRB.Attr.ModelSense, GRB.MINIMIZE)
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     for j in range(len(bb_tree[0].pattern_quantity)):
         bb_tree[0].pattern_quantity[j] = bb_tree[0].model.getVars()[j].x
 
-    logger.info("root node obj_value = %s", bb_tree[0].model.ObjVal)
+    logger.info("bb_tree[0] node obj_value = %s", bb_tree[0].model.ObjVal)
     logger.info("bb_tree[0].pattern =\n%s", bb_tree[0].pattern)
     logger.info("bb_tree[0].pattern_quantity =\n%s", bb_tree[0].pattern_quantity)
 
@@ -95,6 +95,7 @@ if __name__ == "__main__":
         else:
             # perform rounding heuristic (store in solution.incumbent)
             if ROUNDING_OPT == 0:
+                logger.info("perform simple rounding!")
                 rounded_sol = perform_simple_rounding(bb_tree[0].pattern_quantity)
                 if np.sum(rounded_sol) < solution.ub:
                     solution.ub = np.sum(rounded_sol)
@@ -104,6 +105,7 @@ if __name__ == "__main__":
 
             # perform diving heuristics
             elif ROUNDING_OPT == 1:
+                logger.info("perform diving heuristic!")
                 rounded_sol, pattern_r = perform_diving_heuristic(bb_tree[0].pattern_quantity, data, bb_tree[0].pattern)
                 if np.sum(rounded_sol) < solution.ub:
                     solution.ub = np.sum(rounded_sol)
@@ -151,7 +153,7 @@ if __name__ == "__main__":
         solution.gap = (solution.ub - solution.int_lb) / solution.int_lb
 
         if num_iterations % 1 == 0:
-            print(f"{num_iterations:^10} {np.round(solution.lb, 4):^10} {solution.int_lb:^10} {solution.ub:^10} {np.round(solution.gap * 100, 4):^10}")
+            logger.info(f"iterations:{num_iterations:^10} current lb:{np.round(solution.lb, 4):^10} current int lb:{solution.int_lb:^10} current ub:{solution.ub:^10} gap:{np.round(solution.gap * 100, 4):>10}%")
 
         # termination criteria
         if solution.gap <= GAP_TOL or len(bb_tree) == 0:
@@ -161,11 +163,11 @@ if __name__ == "__main__":
 
     t2 = time.time()
     # print incumbent solution
-    print(f"branch and price terminates in {t2 - t1} sec ({num_iterations} iterations) with gap of {solution.gap * 100} %.")
-    print("===incumbent solution===")
-    print(f"objective value: {solution.total_consumption}")
+    logger.info(f"branch and price terminates in {t2 - t1} sec ({num_iterations} iterations) with gap of {solution.gap * 100} %.")
+    logger.info("===incumbent solution===")
+    logger.info("objective value: %s", solution.total_consumption)
     for j in range(len(solution.incumbent)):
         if solution.incumbent[j] > 0:
-            print(f"pattern {j}:  {solution.pattern.T[j]} with quantity: {solution.incumbent[j]}")
+            logger.info(f"pattern {j}:  {solution.pattern.T[j]} with quantity: {solution.incumbent[j]}")
 
     logger.info("End Branch and Price Algorithm!")

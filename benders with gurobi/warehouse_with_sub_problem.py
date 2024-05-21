@@ -1,25 +1,24 @@
 # -*- coding: utf-8 -*-
 """
 """
-from __future__ import division, print_function
-
-import gurobipy as GRBPY
+import gurobipy as grbpy
+from gurobipy import GRB
 
 
 # awkward restriction for 'callback'
 def cbwarehouse(model, where):
-    if where == GRBPY.GRB.Callback.MIPSOL:
+    if where == GRB.Callback.MIPSOL:
         if model._iter >= 1:
             for i in range(model._nwarehouse):
                 model._csupply[i].rhs = model.cbGetSolution(model._vmbuild[i]) * model._supply[i]
 
         model._sub.optimize()
 
-        if model._sub.status == GRBPY.GRB.INFEASIBLE:
+        if model._sub.status == GRB.INFEASIBLE:
             print("Iteration: ", model._iter)
             print("Adding feasibility cut...\n")
 
-            lazycut = GRBPY.quicksum(model._csupply[i].farkasdual * model._supply[i] * model._vmbuild[i] \
+            lazycut = grbpy.quicksum(model._csupply[i].farkasdual * model._supply[i] * model._vmbuild[i] \
                                      for i in range(model._nwarehouse)) + \
                       sum(model._cdemand[i].farkasdual * model._demand[i] for i in range(model._nstore))
 
@@ -29,12 +28,12 @@ def cbwarehouse(model, where):
             model.cbLazy(lazycut >= 0)
 
             model._iter += 1
-        elif model._sub.status == GRBPY.GRB.OPTIMAL:
+        elif model._sub.status == GRB.OPTIMAL:
             if model._sub.objval > model.cbGetSolution(model._maxshipcost) + 1e-6:
                 print("Iteration: ", model._iter)
                 print("Adding optimality cut...\n")
 
-                lazycut = GRBPY.quicksum(model._csupply[i].pi * model._supply[i] * model._vmbuild[i] \
+                lazycut = grbpy.quicksum(model._csupply[i].pi * model._supply[i] * model._vmbuild[i] \
                                          for i in range(model._nwarehouse)) + \
                           sum(model._cdemand[i].pi * model._demand[i] for i in range(model._nstore))
 
@@ -89,56 +88,56 @@ class WareHouse:
     def build(self):
         try:
             # define models for 'master' and 'sub'
-            self.master = GRBPY.Model("master")
-            self.sub = GRBPY.Model("sub")
+            self.master = grbpy.Model("master")
+            self.sub = grbpy.Model("sub")
 
             # disable log information
-            self.master.setParam("OutputFlag", 0)
-            self.sub.setParam("OutputFlag", 0)
+            self.master.setParam(GRB.Param.OutputFlag, 1)
+            self.sub.setParam(GRB.Param.OutputFlag, 1)
 
             # use lazy constraints
-            self.master.setParam("LazyConstraints", 1)
+            self.master.setParam(GRB.Param.LazyConstraints, 1)
 
             # disable presolving in subproblem
-            self.sub.setParam("Presolve", 0)
+            self.sub.setParam(GRB.Param.Presolve, 0)
 
             # required to obtain farkas dual
-            self.sub.setParam("InfUnbdInfo", 1)
+            self.sub.setParam(GRB.Param.InfUnbdInfo, 1)
 
             # use dual simplex
-            self.sub.setParam("Method", 1)
+            self.sub.setParam(GRB.Param.Method, 1)
 
             # construct master problem
             for i in range(self.nwarehouse):
-                self.vmbuild.append(self.master.addVar(0.0, 1.0, 0.0, GRBPY.GRB.BINARY))
+                self.vmbuild.append(self.master.addVar(0.0, 1.0, 0.0, GRB.BINARY))
 
-            self.maxshipcost = self.master.addVar(0.0, GRBPY.GRB.INFINITY, 0.0, GRBPY.GRB.CONTINUOUS)
+            self.maxshipcost = self.master.addVar(0.0, GRB.INFINITY, 0.0, GRB.CONTINUOUS)
 
-            self.master.setObjective(GRBPY.quicksum(self.fixcost[i] * self.vmbuild[i] \
+            self.master.setObjective(grbpy.quicksum(self.fixcost[i] * self.vmbuild[i] \
                                                     for i in range(self.nwarehouse)) + \
-                                     self.maxshipcost, GRBPY.GRB.MINIMIZE)
+                                     self.maxshipcost, GRB.MINIMIZE)
 
             # construct subproblem
             for i in range(self.nwarehouse):
                 lvship = []
                 for j in range(self.nstore):
-                    lvship.append(self.sub.addVar(0.0, GRBPY.GRB.INFINITY, 0.0, GRBPY.GRB.CONTINUOUS))
+                    lvship.append(self.sub.addVar(0.0, GRB.INFINITY, 0.0, GRB.CONTINUOUS))
                 self.vship.append(lvship)
 
             for i in range(self.nwarehouse):
-                self.csupply.append(self.sub.addConstr(GRBPY.quicksum(self.vship[i][j] \
+                self.csupply.append(self.sub.addConstr(grbpy.quicksum(self.vship[i][j] \
                                                                       for j in range(self.nstore)) \
                                                        <= self.supply[i] * 1.0))
 
             for j in range(self.nstore):
-                self.cdemand.append(self.sub.addConstr(GRBPY.quicksum(self.vship[i][j] \
+                self.cdemand.append(self.sub.addConstr(grbpy.quicksum(self.vship[i][j] \
                                                                       for i in range(self.nwarehouse)) \
                                                        == self.demand[j]))
 
-            self.sub.setObjective(GRBPY.quicksum(self.varcost[i][j] * self.vship[i][j] \
+            self.sub.setObjective(grbpy.quicksum(self.varcost[i][j] * self.vship[i][j] \
                                                  for i in range(self.nwarehouse) \
-                                                 for j in range(self.nstore)), GRBPY.GRB.MINIMIZE)
-        except GRBPY.GurobiError as e:
+                                                 for j in range(self.nstore)), GRB.MINIMIZE)
+        except grbpy.GurobiError as e:
             print('Error code' + str(e.errno) + ': ' + str(e))
         except AttributeError as e:
             print('Encountered an attribute error: ' + str(e))

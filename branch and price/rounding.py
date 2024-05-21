@@ -6,10 +6,11 @@ from logger_config import logger
 
 
 def perform_simple_rounding(rel_sol):
-    logger.info("Performing simple rounding")
+    logger.info("start Performing simple rounding")
     # 对给定的解进行简单的向上取整
     rounded_sol = np.ceil(rel_sol)
 
+    logger.info("Rounded sol: %s", rounded_sol)
     logger.info("Ended performing simple rounding")
 
     return rounded_sol

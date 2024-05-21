@@ -9,7 +9,7 @@ from algorithm_parameters import *
 
 
 def solve_sub_problem(data, shadow_price, dual_correction, branching_index: list, pattern_old):
-    logger.info("solve_sub_problem!")
+    logger.info("start solving sub problem!")
     new_pattern = []
 
     num_types = len(shadow_price)
@@ -18,14 +18,14 @@ def solve_sub_problem(data, shadow_price, dual_correction, branching_index: list
     sub_model = grbpy.Model("sub problem")
 
     var_a = grbpy.tupledict()
-    for i in range(data.Customer_numbers):
+    for i in range(num_types):
         var_a[i] = sub_model.addVar(lb=0, ub=GRB.INFINITY, vtype=GRB.INTEGER, name='a({})'.format(i))
     # var_a = sub_model.addVars(num_types, vtype=GRB.INTEGER)
 
     # 背包约束
     sub_model.addConstr(
         grbpy.quicksum(var_a[i] * data.Customer_demand_sizes[i] for i in range(num_types)) <= data.Width,
-        name="width constraint")
+        name="width_constraint")
 
     # Update objective function of SUB model
     sub_model.setObjective(1 - grbpy.quicksum(shadow_price[i] * var_a[i] for i in range(num_types)), GRB.MINIMIZE)
@@ -76,12 +76,14 @@ def solve_sub_problem(data, shadow_price, dual_correction, branching_index: list
                 new_pattern.append(candidate_pattern)
                 logger.info("The pattern is added.")
 
-    logger.info("End of solving sub problem!")
+    logger.info("ended solving sub problem!")
+
     return reduced_cost, new_pattern
 
 
 def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern, pattern: np.ndarray,
                       branching_index: list):
+    logger.info("start Solving CSP with CG!")
     # 只做列生成并求解
     num_types = data.Customer_numbers
 
@@ -94,14 +96,14 @@ def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern, patt
         # 获取约束的影子价格
         dual_list = RMP_model.getAttr(GRB.Attr.Pi, RMP_model.getConstrs())
         shadow_price = dual_list[0:num_types]  # 获取前 num_types 个约束的对偶值
-        dual_correction = dual_list[num_types:len(dual_list)]  # 获取 添加的分支约束 的对偶值
+        shadow_price_correction = dual_list[num_types:len(dual_list)]  # 获取 添加的分支约束 的对偶值
 
         logger.info("shadow price: %s", shadow_price)
-        logger.info("dual correction: %s", dual_correction)
+        logger.info("shadow price correction: %s", shadow_price_correction)
 
         while True:
             # solve pricing sub-problem
-            reduced_cost, new_pattern = solve_sub_problem(data, shadow_price, dual_correction, branching_index, pattern)
+            reduced_cost, new_pattern = solve_sub_problem(data, shadow_price, shadow_price_correction, branching_index, pattern)
             # check termination condition
             if len(new_pattern) == 0:
                 logger.info("cannot found new pattern")
@@ -115,7 +117,7 @@ def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern, patt
                 new_column = grbpy.Column(p, RMP_model.getConstrs()[0:num_types])
                 # add the new variable
                 quantity_pattern.append(
-                    RMP_model.addVar(obj=1.0, vtype=GRB.CONTINUOUS, column=new_column, name="add pattern" + str(p)))
+                    RMP_model.addVar(obj=1.0, vtype=GRB.CONTINUOUS, column=new_column))
                 pattern = np.c_[pattern, p]
 
             # solve RMP
@@ -125,6 +127,11 @@ def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern, patt
             # get dual
             dual_list = RMP_model.getAttr(GRB.Attr.Pi, RMP_model.getConstrs())
             shadow_price = dual_list[0:num_types]
-            dual_correction = dual_list[num_types:len(dual_list)]
+            shadow_price_correction = dual_list[num_types:len(dual_list)]
+
+            logger.info("shadow price: %s", shadow_price)
+            logger.info("shadow price correction: %s", shadow_price_correction)
+
+    logger.info("ended Solving CSP with CG!")
 
     return RMP_model, pattern
