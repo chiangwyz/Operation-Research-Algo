@@ -81,7 +81,7 @@ class LoggerFactory:
 
 
 # 创建一个全局logger
-logger = LoggerFactory.get_colored_logger("branch_and_price.log")
+logger = LoggerFactory.get_colored_logger("benders_with_dual_problem.log")
 
 if __name__ == '__main__':
     # 使用示例
