@@ -38,7 +38,7 @@ def cbwarehouse(model, where):
 
             model._iter += 1
         elif model._dual_sub.status == GRB.OPTIMAL:
-            if model._dual_sub.objval > model.cbGetSolution(model._maxshipcost) + 1e-6:
+            if model._dual_sub.objval > model.cbGetSolution(model._var_maxshipcost_master) + 1e-6:
                 print("Iteration: ", model._iter)
                 print("Adding optimality cut...\n")
 
@@ -46,9 +46,9 @@ def cbwarehouse(model, where):
                                          for i in range(model._nwarehouse)) + \
                           sum(model._var_beta_sub[i].x * model._demand[i] for i in range(model._nstore))
 
-                model.cbLazy(model._maxshipcost >= lazycut)
+                model.cbLazy(model._var_maxshipcost_master >= lazycut)
 
-                logger.info("optimality cut: %s <= %s", lazycut, model._maxshipcost)
+                logger.info("optimality cut: %s <= %s", lazycut, model._var_maxshipcost_master)
 
                 model._iter += 1
         else:

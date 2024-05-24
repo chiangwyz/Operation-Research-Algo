@@ -28,21 +28,21 @@ def cbprepositioning(model, where):
             print("Adding feasibility cut...\n")
 
             lazycut = GRBPY.quicksum(model._csupply[s,a,i].farkasdual * model._y[a,i] for s in model._NS for a in model._AS for i in model._IS) +\
-                      GRBPY.quicksum(model._cdemand[s,a,i].farkasdual * model._D[s,a,i] for s in model._NS for a in model._AS for i in model._IS)
+                      GRBPY.quicksum(model._constr_demand_sub[s,a,i].farkasdual * model._D[s,a,i] for s in model._NS for a in model._AS for i in model._IS)
 
             model.cbLazy(lazycut <= 0)
 
             model._iter += 1
         elif model._sub.status == GRBPY.GRB.OPTIMAL:
-            if model._sub.objval > model.cbGetSolution(model._maxshipcost) + 1e-6:
+            if model._sub.objval > model.cbGetSolution(model._var_maxshipcost_master) + 1e-6:
                 print("Iteration: ", model._iter)
                 print("Adding optimality cut...\n")
 
-                lazycut = GRBPY.quicksum(model._csupply[i].pi * model._supply[i] * model._vmbuild[i] \
+                lazycut = GRBPY.quicksum(model._csupply[i].pi * model._supply[i] * model._var_build_master[i] \
                                          for i in range(model._nwarehouse)) + \
-                          sum(model._cdemand[i].pi * model._demand[i] for i in range(model._nstore))
+                          sum(model._constr_demand_sub[i].pi * model._demand[i] for i in range(model._nstore))
                 lazycut = GRBPY.quicksum(model._csupply[s,a,i].pi * model._y[a,i] for s in model._NS for a in model._AS for i in model._IS) +\
-                      GRBPY.quicksum(model._cdemand[s,a,i].pi * model._D[s,a,i] for s in model._NS for a in model._AS for i in model._IS)
+                      GRBPY.quicksum(model._constr_demand_sub[s,a,i].pi * model._D[s,a,i] for s in model._NS for a in model._AS for i in model._IS)
 
                 model.cbLazy(model._maxexpectedcost >= lazycut)
 

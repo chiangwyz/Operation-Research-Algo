@@ -11,7 +11,7 @@ def cbwarehouse(model, where):
     if where == GRBPY.GRB.Callback.MIPSOL:
         if model._iter >= 1:
             for i in range(model._nwarehouse):
-                model._csupply[i].rhs = model.cbGetSolution(model._vmbuild[i]) * model._supply[i]
+                model._csupply[i].rhs = model.cbGetSolution(model._var_build_master[i]) * model._supply[i]
 
         model._sub.optimize()
 
@@ -19,9 +19,9 @@ def cbwarehouse(model, where):
             print("Iteration: ", model._iter)
             print("Adding feasibility cut...\n")
 
-            lazycut = GRBPY.quicksum(model._csupply[i].farkasdual * model._supply[i] * model._vmbuild[i] \
+            lazycut = GRBPY.quicksum(model._csupply[i].farkasdual * model._supply[i] * model._var_build_master[i] \
                                      for i in range(model._nwarehouse)) + \
-                      sum(model._cdemand[i].farkasdual * model._demand[i] for i in range(model._nstore))
+                      sum(model._constr_demand_sub[i].farkasdual * model._demand[i] for i in range(model._nstore))
 
             for i in range(model._nwarehouse):
                 print("{} farkasdual {}".format(i, model._csupply[i].farkasdual))
@@ -30,15 +30,15 @@ def cbwarehouse(model, where):
 
             model._iter += 1
         elif model._sub.status == GRBPY.GRB.OPTIMAL:
-            if model._sub.objval > model.cbGetSolution(model._maxshipcost) + 1e-6:
+            if model._sub.objval > model.cbGetSolution(model._var_maxshipcost_master) + 1e-6:
                 print("Iteration: ", model._iter)
                 print("Adding optimality cut...\n")
 
-                lazycut = GRBPY.quicksum(model._csupply[i].pi * model._supply[i] * model._vmbuild[i] \
+                lazycut = GRBPY.quicksum(model._csupply[i].pi * model._supply[i] * model._var_build_master[i] \
                                          for i in range(model._nwarehouse)) + \
-                          sum(model._cdemand[i].pi * model._demand[i] for i in range(model._nstore))
+                          sum(model._constr_demand_sub[i].pi * model._demand[i] for i in range(model._nstore))
 
-                model.cbLazy(model._maxshipcost >= lazycut)
+                model.cbLazy(model._var_maxshipcost_master >= lazycut)
 
                 model._iter += 1
         else:

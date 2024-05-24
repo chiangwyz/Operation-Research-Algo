@@ -49,7 +49,7 @@ class benders_cut_callback(cp.CallbackBase):
 
             # if self._iter >= 1:
             #     for i in range(self._nwarehouse):
-            #         self._csupply[i].ub = self.getSolution(self._vmbuild[i]) * self._supply[i]
+            #         self._csupply[i].ub = self.getSolution(self._var_build_master[i]) * self._supply[i]
 
             print("Solving subproblem...")
             self._subproblem.solve()
