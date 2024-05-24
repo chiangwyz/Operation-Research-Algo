@@ -17,6 +17,7 @@ def cbwarehouse(model, where):
                 model._dual_sub.setAttr(GRB.Attr.Obj, model._var_alpha_sub[i], var_y_value[i] * model._supply[i])
 
         model._dual_sub.optimize()
+        model._dual_sub.write(f"dual sub {model._iter}.lp")
 
         if model._dual_sub.status == GRB.INFEASIBLE or model._dual_sub.status == GRB.UNBOUNDED:
             print("Iteration: ", model._iter)
