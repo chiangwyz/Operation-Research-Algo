@@ -17,6 +17,7 @@ def perform_simple_rounding(rel_sol):
 
 
 def solve_sub_problem_embed_in_diving_heuristic(data, price_dual):
+
     logger.info('Solving sub problem embed in diving heuristic')
     # initialization of SP
 
@@ -26,7 +27,7 @@ def solve_sub_problem_embed_in_diving_heuristic(data, price_dual):
 
     sub_model.setObjective(grbpy.quicksum(price_dual[i] * quantity[i] for i in range(data.Customer_numbers)), GRB.MAXIMIZE)
 
-    sub_model.addConstr(grbpy.quicksum(quantity[i]*data.Customer_demand_sizes[i] for i in range(data.Customer_numbers)) <= data.Width, name='capacity constraint')
+    sub_model.addConstr(grbpy.quicksum(quantity[i]*data.Customer_demand_sizes[i] for i in range(data.Customer_numbers)) <= data.Width, name='capacity_constraint')
 
     sub_model.setParam(GRB.Param.OutputFlag, 1)
     sub_model.optimize()
@@ -52,7 +53,7 @@ def solve_CSP_with_CG_embed_in_diving_heuristic(data, pattern_matrix, residual_d
 
     # constraints of RMP (demand satisfaction)
     rmp_model.addConstrs((grbpy.quicksum(pattern_matrix[i][j] * quantity_pattern[j] for j in range(num_patterns)) >=
-                          residual_demand[i] for i in range(data.Customer_numbers)), name='demand satisfaction')
+                          residual_demand[i] for i in range(data.Customer_numbers)), name='demand_satisfaction')
 
     rmp_model.setParam(GRB.Param.OutputFlag, 1)
     rmp_model.setAttr(GRB.Attr.ModelSense, GRB.MINIMIZE)
@@ -99,6 +100,7 @@ def perform_diving_heuristic(relative_solution, data, pattern):
     num_new_patterns = len(relative_solution)
     # main steps
     while residual_demand.sum() > 0:
+
         num_patterns = len(relative_solution)
         rounded_sol = np.pad(rounded_sol, (0, num_new_patterns), 'constant')  # expand array
 
