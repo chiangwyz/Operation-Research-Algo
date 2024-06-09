@@ -9,7 +9,11 @@ from algorithm_parameters import *
 
 
 def solve_sub_problem(data, shadow_price, dual_correction, branching_index: list, pattern_old):
+
     logger.info("start solving sub problem!")
+
+    logger.info("shadow_price: %s", shadow_price)
+
     new_pattern = []
 
     num_types = len(shadow_price)
@@ -36,7 +40,9 @@ def solve_sub_problem(data, shadow_price, dual_correction, branching_index: list
 
     sub_model.update()
     sub_model.optimize()
-    sub_model.write("sub_problem.lp")
+    sp_global_counter.increment()
+    logger.info("write sp model lp: %s", sp_global_counter.get_count())
+    sub_model.write(f"sub_problem_{sp_global_counter.get_count()}.lp")
 
     output = []
     for var in sub_model.getVars():
@@ -83,11 +89,18 @@ def solve_sub_problem(data, shadow_price, dual_correction, branching_index: list
 
 def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern, pattern: np.ndarray,
                       branching_index: list):
+
     logger.info("start Solving CSP with CG!")
+
     # 只做列生成并求解
     num_types = data.Customer_numbers
 
     RMP_model.update()
+
+    csp_global_counter.increment()
+    logger.info("write csp model lp: %s", csp_global_counter.get_count())
+    RMP_model.write(f"csp_{csp_global_counter.get_count()}.lp")
+
     RMP_model.optimize()  # 求解LP
     # logger.info("RMP_model status: %s", RMP_model.status)
     logger.info("RMP_model status: %s", GUROBI_Status_Map[RMP_model.status])
@@ -123,6 +136,10 @@ def solve_CSP_with_CG(data: Data, RMP_model: grbpy.Model, quantity_pattern, patt
             # solve RMP
             RMP_model.update()
             RMP_model.optimize()
+
+            csp_global_counter.increment()
+            logger.info("write csp model lp: %s", csp_global_counter.get_count())
+            RMP_model.write(f"csp_{csp_global_counter.get_count()}.lp")
 
             # get dual
             dual_list = RMP_model.getAttr(GRB.Attr.Pi, RMP_model.getConstrs())

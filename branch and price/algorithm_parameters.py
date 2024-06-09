@@ -26,3 +26,48 @@ GUROBI_Status_Map = {
     17: "GRB.MEM_LIMIT"
 }
 
+
+class BaseSingletonCounter:
+    _instances = {}
+    count = 0
+
+    def __new__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(BaseSingletonCounter, cls).__new__(cls, *args, **kwargs)
+        return cls._instances[cls]
+
+    @classmethod
+    def increment(cls):
+        cls.count += 1
+
+    @classmethod
+    def get_count(cls):
+        return cls.count
+
+
+class SPGlobalCounter(BaseSingletonCounter):
+    pass
+
+
+class MPGlobalCounter(BaseSingletonCounter):
+    pass
+
+
+class CSPGlobalCounter(BaseSingletonCounter):
+    pass
+
+
+class DGGlobalCounter(BaseSingletonCounter):
+    pass
+
+
+class SPDGlobalCounter(BaseSingletonCounter):
+    pass
+
+
+# 使用各自的计数器
+sp_global_counter = SPGlobalCounter()
+mp_global_counter = MPGlobalCounter()
+csp_global_counter = CSPGlobalCounter()
+diving_global_counter = DGGlobalCounter()
+diving_sp_global_counter = SPDGlobalCounter()

@@ -31,18 +31,30 @@ def solve_sub_problem_embed_in_diving_heuristic(data, price_dual):
 
     sub_model.setParam(GRB.Param.OutputFlag, 1)
     sub_model.optimize()
+
+    diving_sp_global_counter.increment()
+    logger.info("write diving SP model lp: %s", diving_sp_global_counter.get_count())
+    sub_model.write(f"diving_sp_{diving_sp_global_counter.get_count()}.lp")
+
     reduced_cost = 1 - sub_model.objVal
 
     new_pattern = np.array(sub_model.getAttr(GRB.Attr.X, sub_model.getVars()), dtype=np.int32)
 
+    logger.info("diving sp reduced cost: %s", reduced_cost)
+    logger.info("diving sp new pattern: %s", new_pattern)
     logger.info('Ended solving sub problem embed in diving heuristic')
 
     return reduced_cost, new_pattern
 
 
 def solve_CSP_with_CG_embed_in_diving_heuristic(data, pattern_matrix, residual_demand):
+
     logger.info("Solving CSP with CG_embed in diving heuristic!")
 
+    logger.info("pattern_matrix: \n%s", pattern_matrix)
+    logger.info("residual_demand: %s", residual_demand)
+
+    # pattern矩阵的列数，即模式的总数量
     num_patterns = np.shape(pattern_matrix)[1]
 
     # create RMP
@@ -51,7 +63,7 @@ def solve_CSP_with_CG_embed_in_diving_heuristic(data, pattern_matrix, residual_d
     # variables of RMP
     quantity_pattern = rmp_model.addVars(num_patterns, obj=1, vtype=GRB.CONTINUOUS)
 
-    # constraints of RMP (demand satisfaction)
+    # constraints of RMP (demand satisfaction), with residual_demand in the right hands
     rmp_model.addConstrs((grbpy.quicksum(pattern_matrix[i][j] * quantity_pattern[j] for j in range(num_patterns)) >=
                           residual_demand[i] for i in range(data.Customer_numbers)), name='demand_satisfaction')
 
@@ -63,9 +75,16 @@ def solve_CSP_with_CG_embed_in_diving_heuristic(data, pattern_matrix, residual_d
         # solve RMP
         rmp_model.optimize()
 
+        diving_global_counter.increment()
+        logger.info("write diving CG model lp: %s", diving_global_counter.get_count())
+        rmp_model.write(f"div_CG_{diving_global_counter.get_count()}.lp")
+
         price_dual = rmp_model.getAttr(GRB.Attr.Pi, rmp_model.getConstrs())
 
         reduced_cost, new_pattern = solve_sub_problem_embed_in_diving_heuristic(data, price_dual)
+
+        logger.info("Reduced cost: %s", reduced_cost)
+        logger.info("new pattern: %s", new_pattern)
 
         if np.abs(reduced_cost) <= TOL or reduced_cost >= 0:
             break
@@ -90,8 +109,8 @@ def solve_CSP_with_CG_embed_in_diving_heuristic(data, pattern_matrix, residual_d
 
 def perform_diving_heuristic(relative_solution, data, pattern):
     logger.info("Performing diving heuristic!")
-    logger.info("rel_sol: %s", relative_solution)
-    logger.info("pattern: %s", pattern)
+    logger.info("relative_solution: \n%s", relative_solution)
+    logger.info("pattern: \n%s", pattern)
 
     # initialization
     total_consumption = 0
@@ -102,6 +121,7 @@ def perform_diving_heuristic(relative_solution, data, pattern):
     while residual_demand.sum() > 0:
 
         num_patterns = len(relative_solution)
+
         rounded_sol = np.pad(rounded_sol, (0, num_new_patterns), 'constant')  # expand array
 
         # 先做一些变量的固定
@@ -116,6 +136,7 @@ def perform_diving_heuristic(relative_solution, data, pattern):
                 rounded_sol[j] += np.ceil(relative_solution[j])
                 num_rounded += 1
 
+        logger.info("Rounded solution: \n%s", rounded_sol)
         # none elements rounded
         if num_rounded == 0:
             # determine the least fractional element to round up/down
@@ -123,6 +144,9 @@ def perform_diving_heuristic(relative_solution, data, pattern):
             fractional_index = np.array([k for k in range(num_patterns) if fraction[k] > TOL])
             k = fractional_index[np.argmin(fraction[fractional_index])]
             rounded_sol[k] += np.round(relative_solution[k])
+
+        logger.info("total_consumption: %s", total_consumption)
+        logger.info("rounded_sol sum: %s", rounded_sol.sum())
 
         # check if the residual problem stays unchanged
         if rounded_sol.sum() == total_consumption:
@@ -138,8 +162,11 @@ def perform_diving_heuristic(relative_solution, data, pattern):
         sat_matrix = np.zeros((len(index), data.Customer_numbers), dtype=int)
         for i in range(len(index)):
             sat_matrix[i] = pattern.T[index][i] * rounded_sol[index][i]
+        logger.info("sat_matrix: \n%s", sat_matrix)
         residual_demand = data.Customer_demands - sat_matrix.sum(axis=0)
         residual_demand = np.maximum(0, residual_demand)
+
+        logger.info("residual_demand: \n%s", residual_demand)
 
         if residual_demand.sum() == 0:
             break

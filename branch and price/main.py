@@ -25,6 +25,7 @@ if __name__ == "__main__":
     bb_tree = []
     solution = Solution()
 
+    # RMP is a linear programming
     rmp_model = grbpy.Model("Restricted Master Problem")
 
     pattern = np.zeros((data.Customer_numbers, data.Customer_numbers), dtype=np.int32)
@@ -43,7 +44,7 @@ if __name__ == "__main__":
 
     rmp_model.setParam(GRB.Param.OutputFlag, 1)
     rmp_model.setAttr(GRB.Attr.ModelSense, GRB.MINIMIZE)
-    rmp_model.write("master problem.lp")
+    rmp_model.write("master problem root node.lp")
 
     logger.info("finished root node model build!")
 
@@ -60,6 +61,7 @@ if __name__ == "__main__":
     for j in range(len(bb_tree[0].pattern_quantity)):
         bb_tree[0].pattern_quantity[j] = bb_tree[0].model.getVars()[j].x
 
+    logger.info("finished root node solve!")
     logger.info("bb_tree[0] node obj_value = %s", bb_tree[0].model.ObjVal)
     logger.info("bb_tree[0].pattern =\n%s", bb_tree[0].pattern)
     logger.info("bb_tree[0].pattern_quantity =\n%s", bb_tree[0].pattern_quantity)
