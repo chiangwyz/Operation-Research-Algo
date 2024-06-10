@@ -136,7 +136,6 @@ def perform_diving_heuristic(relative_solution, data, pattern):
                 rounded_sol[j] += np.ceil(relative_solution[j])
                 num_rounded += 1
 
-        logger.info("Rounded solution: \n%s", rounded_sol)
         # none elements rounded
         if num_rounded == 0:
             # determine the least fractional element to round up/down
@@ -146,7 +145,6 @@ def perform_diving_heuristic(relative_solution, data, pattern):
             rounded_sol[k] += np.round(relative_solution[k])
 
         logger.info("total_consumption: %s", total_consumption)
-        logger.info("rounded_sol sum: %s", rounded_sol.sum())
 
         # check if the residual problem stays unchanged
         if rounded_sol.sum() == total_consumption:
@@ -156,9 +154,15 @@ def perform_diving_heuristic(relative_solution, data, pattern):
             k = fractional_index[np.argmin(fraction[fractional_index])]
             rounded_sol[k] += np.ceil(relative_solution[k])
 
+        logger.info("rounded_sol: \n%s", rounded_sol)
+
         # update total consumption and residual demand
         total_consumption = rounded_sol.sum()
         index = [i for i in range(num_patterns) if rounded_sol[i] > 0]
+
+        logger.info("rounded_sol sum: %s", rounded_sol.sum())
+        logger.info("index: %s", index)
+
         sat_matrix = np.zeros((len(index), data.Customer_numbers), dtype=int)
         for i in range(len(index)):
             sat_matrix[i] = pattern.T[index][i] * rounded_sol[index][i]
