@@ -9,12 +9,12 @@ from coptpy import COPT
 class CutStockCG:
     def __init__(self):
         self.roll_length = 115
-        # self.roll_size = [40, 55, 40, 70, 50, 70, 70, 30, 25, 30, 25, 20, 45, 20, 60, 30, 35, 30, 55, 50]
-        # self.roll_demand = [42, 49, 16, 10, 37, 48, 10, 32, 35, 13, 14, 33, 20, 19, 47, 48, 14, 15, 20, 26]
+        self.roll_size = [40, 55, 40, 70, 50, 70, 70, 30, 25, 30, 25, 20, 45, 20, 60, 30, 35, 30, 55, 50]
+        self.roll_demand = [42, 49, 16, 10, 37, 48, 10, 32, 35, 13, 14, 33, 20, 19, 47, 48, 14, 15, 20, 26]
         # self.roll_size = [25, 40, 50, 55, 70]
         # self.roll_demand = [50, 36, 24, 8, 30]
-        self.roll_size = [40, 55, 40, 70, 50, 70, 70, 30, 25, 30]
-        self.roll_demand = [42, 49, 16, 10, 37, 48, 10, 32, 35, 13]
+        # self.roll_size = [40, 55, 40, 70, 50, 70, 70, 30, 25, 30]
+        # self.roll_demand = [42, 49, 16, 10, 37, 48, 10, 32, 35, 13]
         self.roll_kinds = len(self.roll_size)
         self.initial_patterns = self.roll_kinds
 
